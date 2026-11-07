@@ -1,0 +1,15 @@
+# Godot-generated editor and import cache
+.godot/
+.export/
+
+# Local build products and test output
+work/
+*.log
+*.tmp
+*.bak
+tests/.*
+
+# OS and editor files
+.DS_Store
+.vscode/
+.idea/

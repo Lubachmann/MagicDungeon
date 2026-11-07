@@ -1,0 +1,5 @@
+Equipment icons by Lorc, available at https://game-icons.net, CC BY 3.0.
+Author: https://lorcblog.blogspot.com/
+License: https://creativecommons.org/licenses/by/3.0/
+Broadsword, checked-shield, breastplate, crested-helmet, gem-necklace.
+Original transparent SVG shapes; tinted and scaled at runtime.

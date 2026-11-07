@@ -1,0 +1,8 @@
+Kyrise's Free 16x16 RPG Icon Pack, © 2018 Kyrise, CC BY 4.0.
+https://kyrise.itch.io/kyrises-free-16x16-rpg-icon-pack
+https://creativecommons.org/licenses/by/4.0/
+Selected original 16x16 PNGs copied and renamed; no pixels changed.
+health.png and weapon_dagger.png: 0x72 DungeonTileset II v1.7, CC0.
+https://0x72.itch.io/dungeontileset-ii
+Atlas sprites placed in a transparent 16x16 cell.
+Buff Icons.pixaki was used only as a style reference; its images are not redistributed.

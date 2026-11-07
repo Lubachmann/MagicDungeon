@@ -1,0 +1,18 @@
+{
+  "artist": "0x72",
+  "license": "CC0 1.0",
+  "url": "https://0x72.itch.io/dungeontileset-ii",
+  "sprites": {
+    "orc_raider": "orc_warrior_idle_anim_f",
+    "revenant": "wogol_idle_anim_f",
+    "fiend": "chort_idle_anim_f",
+    "skullguard": "masked_orc_idle_anim_f",
+    "cultist": "doc_idle_anim_f",
+    "colossus": "big_zombie_idle_anim_f",
+    "tide_ogre": "ogre_idle_anim_f",
+    "necromancer": "necromancer_anim_f",
+    "furnace_demon": "big_demon_idle_anim_f",
+    "seraph": "angel_idle_anim_f",
+    "sentinel": "knight_m_idle_anim_f"
+  }
+}

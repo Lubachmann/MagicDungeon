@@ -1,0 +1,4 @@
+Boots icon by Lorc (https://lorcblog.blogspot.com/)
+Source: https://game-icons.net/1x1/lorc/boots.html
+License: CC BY 3.0 https://creativecommons.org/licenses/by/3.0/
+Adapted to a 16x16 monochrome pixel silhouette; tinted at runtime.

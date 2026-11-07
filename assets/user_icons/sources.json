@@ -1,0 +1,33 @@
+{
+  "source": "Project owner supplied these original artworks in the conversation; copied unchanged.",
+  "files": {
+    "armor_stat_shield": "codex-clipboard-9d00ccc4-2ff2-48cc-a8f0-173aa99e432c.png",
+    "health_heart": "codex-clipboard-cf733c06-5562-4577-813d-44dfc2d135cb.png",
+    "healing_flask": "codex-clipboard-fdad08c2-b96e-4656-a64a-03f65e75957f.png",
+    "iron_ingot": "codex-clipboard-eb59f672-e19f-42ba-881d-38f31a13a9de.png",
+    "boots": "codex-clipboard-af9e2942-dea5-42ac-86af-260ca6593230.png",
+    "book": "codex-clipboard-4159c193-0869-48b7-86c6-74060599bb16.png",
+    "map": "codex-clipboard-cafa060f-3800-4e71-a119-3a1097dd043c.png",
+    "relic_gem": "codex-clipboard-0b30e6b7-1b2d-432e-80cf-9d3cee8fda5f.png",
+    "treasure_chest": "codex-clipboard-5fd873b9-8cf3-46b2-acc1-7e965e1e95ba.png",
+    "sword": "codex-clipboard-ae4d7c38-1be3-47d1-84e4-dc999d087e00.png",
+    "greatblade": "codex-clipboard-b6efd7e7-2954-4a1a-a27e-5f2f5e8b4fd2.png",
+    "axe": "codex-clipboard-d5122e42-7074-4f2c-bfb6-d854f6758301.png",
+    "shield": "codex-clipboard-27f0d71a-7ffe-4b03-9c32-056f4ad817a2.png",
+    "heavy_armor": "codex-clipboard-2ab0dd0e-dc03-4468-8b52-7c68e33e5390.png",
+    "light_armor": "codex-clipboard-0dacf67f-2489-41a3-aa49-64b9f3489466.png",
+    "helmet": "codex-clipboard-36748ebb-fe2d-452f-a0d7-13184ecbd62f.png",
+    "amulet": "codex-clipboard-72674e4c-89d5-4e6f-b950-252c788773ab.png",
+    "crossbow_unused": "codex-clipboard-b76de951-d537-441a-9907-e077b816b598.png",
+    "attack_stat": "Attack.png",
+    "attack_time": "Time1.png",
+    "critical_chance": "CritChance.png",
+    "critical_damage": "CritDamage.png",
+    "vampirism": "Blood.png",
+    "evade": "Dodge.png",
+    "element_fire": "Fire1.png",
+    "element_ice": "Ice.png",
+    "element_acid": "Acid.png",
+    "element_poison": "Poison.png"
+  }
+}
