@@ -1,0 +1,27 @@
+extends SceneTree
+var failures=[]
+func check(ok: bool,message: String):
+ if not ok:failures.append(message)
+func _initialize():call_deferred("run")
+func run():
+ var g=load("res://main.tscn").instantiate();g.save_path="/private/tmp/magic-ui-notices";root.add_child(g);await process_frame;g.session.enabled=false;g.set_process(false);g.career=g.replay.new_career();g.new_run(19)
+ var c=g.smithy.cargo();c.blueprints.dagger=true;c.elements.fire=true;c.ore=5;c.monster=5;g.smithy.commit();var p=g.smithy.data()
+ check(p.unseen_blueprints.has("dagger") and p.unseen_runes.has("fire"),"Returned blueprints and runes are marked new")
+ g.mode="sanctuary";g.action("smithy_open");g.action("smithy_select:dagger");check(not p.unseen_blueprints.has("dagger"),"Inspecting blueprint clears new marker")
+ g.action("smithy_make:dagger");check(p.unseen_items.has("dagger"),"Crafted equipment is marked new")
+ g.action("smithy_runes:dagger");g.action("smithy_runes_seen");check(p.unseen_runes.is_empty(),"Viewed rune discoveries can be acknowledged")
+ g.action("smithy_back")
+ g.replay.draft.mode="standard";g.loadout_menu.open("expedition");g.action("loadout_select:dagger");check(not p.unseen_items.has("dagger"),"Selecting crafted item clears marker")
+ p.unseen_items.dagger=true;g.session.enabled=true;g.session.active=false;check(g.session.commit_profile(),"New item marker saves");g.load_progress();check(g.smithy.data().unseen_items.has("dagger"),"New item marker survives profile reload")
+ var sanctuary=g.sanctuary.progress();sanctuary.unseen.smith=true;g.mode="sanctuary";g.action("sanctuary_select:smith");check(not sanctuary.unseen.has("smith"),"Inspecting a Hearth discovery clears its new marker")
+ g.session.enabled=false;g.mode="settings";g.action("display_toggle");check(g.front_end.display_pending,"Display change opens confirmation")
+ g.action("display_revert");check(not g.front_end.display_pending,"Display change can be reverted")
+ g.action("display_toggle");g.front_end.display_deadline=0;g.front_end.tick();check(not g.front_end.display_pending,"Unconfirmed display changes automatically revert")
+ g.action("display_toggle");g.action("display_confirm");check(not g.front_end.display_pending,"Display change can be confirmed")
+ g.mode="codex";g.replay.codex_page=0;g.action("codex_search");var key=InputEventKey.new();key.pressed=true;key.unicode=65;key.keycode=KEY_A;g.controls.handle(key)
+ check(g.replay.codex_search=="A","Chronicle search accepts text without triggering navigation")
+ key.unicode=0;key.keycode=KEY_BACKSPACE;g.controls.handle(key);check(g.replay.codex_search=="","Search supports deleting characters")
+ key.keycode=KEY_ESCAPE;g.controls.handle(key);check(not g.replay.codex_search_active and g.mode=="codex","Escape ends search without closing Chronicle")
+ g.action("codex_keyboard");g.action("codex_key:A");g.action("codex_key:space");g.action("codex_key:B");check(g.replay.codex_search=="A B","On-screen keyboard enters letters and spaces")
+ g.action("codex_key:back");g.action("codex_back");check(g.replay.codex_search=="A " and not g.replay.codex_keyboard and g.mode=="codex","On-screen keyboard supports deletion and controller back")
+ print(JSON.stringify({"failures":failures}));g.free();quit(0 if failures.is_empty() else 1)

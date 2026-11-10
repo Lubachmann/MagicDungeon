@@ -14,15 +14,15 @@ const NODES={
 	"might":{"name": "Might", "branch": 1, "parent": "kindling", "icon": "attack", "costs": [20, 29, 39, 51, 64, 78, 94, 111, 129, 149, 171, 193, 217, 243, 270], "effect": "+0.7 character attack per rank. Weapons scale this hit power.", "cell": Vector2i(0,0)},
 	"tempo":{"name": "Tempo", "branch": 1, "parent": "might", "icon": "speed", "costs": [40, 57, 76, 98, 123, 151, 181, 214, 250, 289], "effect": "+1% attack speed per rank.", "cell": Vector2i(1,0)},
 	"precision_training":{"name": "Precision", "branch": 1, "parent": "tempo", "icon": "crit", "costs": [45, 65, 88, 114, 143, 175, 210, 249, 290, 335], "effect": "+1% critical chance per rank.", "cell": Vector2i(0,1)},
-	"ruin_training":{"name": "Ruin", "branch": 1, "parent": "precision_training", "icon": "crit", "costs": [50, 72, 98, 126, 159, 194, 234, 276, 323, 372], "effect": "+3% critical damage per rank.", "cell": Vector2i(1,1)},
-	"tinkering":{"name": "Tinkering", "branch": 1, "parent": "might", "icon": "iron", "costs": [75], "effect": "+1 iron from the first pickup each floor. With Mara, choose a defensive item type in armory passages.", "cell": Vector2i(0,2)},
-	"runeforge":{"name": "Rune Forge", "branch": 1, "parent": "tinkering", "icon": "fire", "costs": [180], "effect": "Unlock paid infusions after the free elemental imprint. Includes critical stats, evade and vampirism.", "cell": Vector2i(1,2)},
-	"smithcraft":{"name": "Quartermaster", "branch": 1, "parent": "runeforge", "icon": "hammer", "costs": [220, 550, 1050], "effect": "Better random starter weapon: Rare L1 / Rare L2 / Very rare L2 at ranks 1 / 2 / 3. Also +1 starting iron per rank.", "cell": Vector2i(0,3)},
-	"salvage_master":{"name": "Scrapper", "branch": 1, "parent": "runeforge", "icon": "salvage", "costs": [160, 360, 760], "effect": "+1 extra fragment when you scrap an item per rank. 3 fragments make 1 iron.", "cell": Vector2i(1,3)},
+	"ruin_training":{"name": "Ruin", "branch": 1, "parent": "precision_training", "icon": "crit_damage", "costs": [50, 72, 98, 126, 159, 194, 234, 276, 323, 372], "effect": "+3% critical damage per rank.", "cell": Vector2i(1,1)},
+	"tinkering":{"name": "Tinkering", "branch": 1, "parent": "might", "icon": "iron", "costs": [75], "effect": "+1 ore from the first iron pickup each floor.", "cell": Vector2i(0,2)},
+	"runeforge":{"name": "Rune Forge", "branch": 1, "parent": "tinkering", "icon": "fire", "costs": [180], "effect": "Reduce the ore cost of smithy rune infusions by 1, to a minimum of 1. Find elemental rune blueprints in elemental passages.", "cell": Vector2i(1,2)},
+	"smithcraft":{"name": "Quartermaster", "branch": 1, "parent": "runeforge", "icon": "hammer", "costs": [220, 550, 1050], "effect": "+1 ore at the start of each expedition per rank.", "cell": Vector2i(0,3)},
+	"salvage_master":{"name": "Scrapper", "branch": 1, "parent": "runeforge", "icon": "salvage", "costs": [160, 360, 760], "effect": "+1 ore from mining deposits per rank.", "cell": Vector2i(1,3)},
 	"cartography":{"name": "Cartography", "branch": 2, "parent": "kindling", "icon": "map", "costs": [40], "effect": "Show the room types next to rooms you have visited.", "cell": Vector2i(0,0)},
-	"treasure_hunter":{"name": "Prospector", "branch": 2, "parent": "cartography", "icon": "key", "costs": [35, 49, 64, 83, 103, 126, 152, 180, 210, 243], "effect": "+3% chance to find Rare gear in chests per rank.", "cell": Vector2i(1,0)},
-	"runic_sight":{"name": "Runic Sight", "branch": 2, "parent": "cartography", "icon": "vault", "costs": [180], "effect": "Show the first puzzle symbol. The puzzle amulet reward becomes Very rare.", "cell": Vector2i(0,1)},
-	"gilded_touch":{"name": "Gilded Touch", "branch": 2, "parent": "treasure_hunter", "icon": "sun", "costs": [70, 97, 128, 165, 206, 252, 303, 359, 419, 485], "effect": "+1% chance to find Very rare gear in chests per rank.", "cell": Vector2i(1,1)},
+	"treasure_hunter":{"name": "Prospector", "branch": 2, "parent": "cartography", "icon": "key", "costs": [35, 49, 64, 83, 103, 126, 152, 180, 210, 243], "effect": "+3% chance per rank for chests to yield 2 extra ore.", "cell": Vector2i(1,0)},
+	"runic_sight":{"name": "Runic Sight", "branch": 2, "parent": "cartography", "icon": "vault", "costs": [180], "effect": "Show the first puzzle symbol and gain 3 ore when claiming a reliquary reward.", "cell": Vector2i(0,1)},
+	"gilded_touch":{"name": "Gilded Touch", "branch": 2, "parent": "treasure_hunter", "icon": "sun", "costs": [70, 97, 128, 165, 206, 252, 303, 359, 419, 485], "effect": "+2% chance per rank for chests to yield an extra Warden core.", "cell": Vector2i(1,1)},
 	"recall":{"name": "Recall", "branch": 2, "parent": "runic_sight", "icon": "boots", "costs": [300], "effect": "Return to the floor entrance once per floor. Cannot be used in combat.", "cell": Vector2i(0,2)},
 	"embercraft":{"name": "Embercraft", "branch": 2, "parent": "cartography", "icon": "ember", "costs": [25, 36, 49, 63, 80, 97, 117, 138, 162, 186], "effect": "+2% embers kept at the end of a run per rank.", "cell": Vector2i(1,2)},
 	"relic_lens":{"name": "Relic Lens", "branch": 2, "parent": "runic_sight", "icon": "relic", "costs": [160, 420, 900], "effect": "+1 upgrade reroll per floor per rank.", "cell": Vector2i(0,3)},
@@ -34,13 +34,14 @@ const NODES={
 	"insight":{"name": "Insight", "branch": 3, "parent": "kindling", "icon": "book", "costs": [350], "effect": "Choose from 4 level-up upgrades instead of 3.", "cell": Vector2i(0,2)},
 	"transmutation":{"name": "Fortune", "branch": 3, "parent": "kindling", "icon": "relic", "costs": [260], "effect": "+10% chance for a Rare skill in each level-up choice, when available.", "cell": Vector2i(1,2)},
 	"convergence":{"name": "Convergence", "branch": 3, "parent": "insight", "icon": "relic", "costs": [500], "effect": "+10% chance for an Epic skill in each level-up choice, when available.", "cell": Vector2i(0,3)},
-	"blastcraft":{"name": "Iron Cache", "branch": 3, "parent": "poison_mastery", "icon": "iron", "costs": [140, 360, 780], "effect": "+1 iron at the start of each run per rank.", "cell": Vector2i(1,3)},
+	"blastcraft":{"name": "Iron Cache", "branch": 3, "parent": "poison_mastery", "icon": "iron", "costs": [140, 360, 780], "effect": "+1 ore at the start of each expedition per rank.", "cell": Vector2i(1,3)},
 }
 const OLD_COSTS={"kindling":[4],"vigor":[6,10,14],"cartography":[6],"tinkering":[6],"flaskcraft":[12],"runic_sight":[14],"relic_lens":[14],"second_wind":[30],"recall":[18],"runeforge":[22]}
 var g
 var branch=0
 var selected="kindling"
 var return_mode="title"
+var reset_pending=false
 func _init(game):g=game
 static func legacy_refund(ranks: Array) -> int:
 	var total=0
@@ -105,6 +106,12 @@ func connection_path(id: String) -> PackedVector2Array:
 	return PackedVector2Array([start,Vector2(lane,start.y),Vector2(lane,gutter),Vector2(target.get_center().x,gutter),Vector2(target.get_center().x,target.position.y)])
 
 func draw() -> void:
+	if reset_pending:
+		g.front_end.menu_backdrop();g.front_end.overlay(Rect2(280,250,720,340))
+		g.text(Vector2(325,310),"RESET THE EMBER TREE?",28,g.GOLD)
+		g.draw_wrapped("Refund %d embers and remove all learned ranks. Changes apply to future expeditions."%spent(),Vector2(325,365),630,21,g.INK,3)
+		g.button(Rect2(325,475,290,60),"Reset / +%d"%spent(),"skills_reset_confirm")
+		g.button(Rect2(645,475,290,60),"Cancel","skills_reset_cancel");return
 	g.front_end.menu_backdrop()
 	g.text(Vector2(70,80),"EMBER TREE",36,g.GOLD)
 	g.ui_icon("ember",Vector2(965,45),32);g.text(Vector2(1008,77),str(g.bank),28,g.GOLD)
@@ -116,12 +123,13 @@ func draw() -> void:
 	g.text(Vector2(87,268),"Kindling",20,g.GOLD)
 	g.text(Vector2(100,292),"%d/1"%rank("kindling",false),16)
 	var parent_id=NODES[selected].parent
-	if parent_id!="" and (NODES[selected].branch==branch):
-		var path=connection_path(selected)
-		g.draw_polyline(path,g.TEAL,2)
+	var ancestor=selected
+	while NODES[ancestor].parent!="" and NODES[ancestor].branch==branch:
+		var path=connection_path(ancestor);g.draw_polyline(path,g.TEAL,2)
 		var tip=path[path.size()-1]
 		g.draw_polyline(PackedVector2Array([tip+Vector2(-5,-7),tip,tip+Vector2(5,-7)]),g.TEAL,2)
-	if parent_id=="kindling" and NODES[selected].branch==branch:g.draw_rect(root_rect.grow(3),g.TEAL,false,2)
+		ancestor=NODES[ancestor].parent
+	if ancestor=="kindling" and selected!="kindling":g.draw_rect(root_rect.grow(3),g.TEAL,false,2)
 	for id in NODES:
 		var node=NODES[id]
 		if node.branch!=branch:continue
@@ -138,8 +146,9 @@ func draw() -> void:
 	g.ui_icon(node.icon,Vector2(1028,220),64)
 	g.text(Vector2(947,325),node.name,26,g.GOLD)
 	var description=describe(selected)
-	g.draw_wrapped(description,Vector2(947,369),240,20,g.INK,7)
-	if node.parent!="":g.text(Vector2(947,574),"Needs "+NODES[node.parent].name,16,g.TEAL)
+	g.draw_wrapped("Rank %d → %d. "%[rank(selected,false),mini(rank(selected,false)+1,node.costs.size())]+description,Vector2(947,369),240,20,g.INK,7)
+	var status="MAXIMUM RANK" if price(selected)<0 else "Needs "+NODES[node.parent].name if not available(selected) and node.parent!="" else "Need %d more embers"%(price(selected)-g.bank) if g.bank<price(selected) else "Ready to learn"
+	g.text(Vector2(947,574),status,16,g.TEAL)
 	g.button(Rect2(947,615,240,58),"MAX" if price(selected)<0 else "Learn / %d"%price(selected),"skill_buy",false,price(selected)>=0 and available(selected) and g.bank>=price(selected))
 	g.front_end.icon_button(Rect2(70,750,170,48),"boots","Back","skills_back")
 	g.front_end.icon_button(Rect2(270,750,340,48),"ember","Reset / +%d"%spent(),"skills_reset",false,spent()>0)
@@ -149,13 +158,23 @@ func draw() -> void:
 
 func describe(id: String) -> String:
 	var level=rank(id,false);var next=mini(NODES[id].costs.size(),level+1)
-	if id=="tempo":return "Base attack interval: %.3fs → %.3fs next rank. Lower is faster. Equipment also changes this."%[g.choice_ui.interval(1.0+0.01*level),g.choice_ui.interval(1.0+0.01*next)]
+	# The values below match the current run rules and show the actual cumulative bonus.
+	var linear={"vigor":[3.0,"max HP"],"armor_training":[0.6,"armor"],"might":[0.7,"character attack"],"precision_training":[1.0,"% crit chance"],"wellkeeper":[3.0,"HP from fountains"],"field_medicine":[2.0,"HP per flask"],"recovery":[1.0,"HP after victory"],"flask_reserve":[1.0,"starting flasks"],"salvage_master":[1.0,"ore per deposit"],"smithcraft":[1.0,"starting ore"],"blastcraft":[1.0,"starting ore"],"embercraft":[2.0,"% embers kept"],"supply_cache":[2.0,"% flask drop chance"],"relic_lens":[1.0,"rerolls per floor"],"fire_mastery":[5.0,"% fire damage"],"acid_mastery":[5.0,"% acid effect"],"ice_mastery":[5.0,"% frost effect"],"poison_mastery":[5.0,"% poison effect"],"kindling":[4.0,"max HP"],"transmutation":[10.0,"% rare offer chance"],"convergence":[10.0,"% epic offer chance"]}
+	if id in linear:
+		var stat=linear[id];var old_value=float(stat[0])*level;var new_value=float(stat[0])*next
+		return "+%.1f → +%.1f %s. %s"%[old_value,new_value,stat[1],NODES[id].effect]
+	if id=="flaskcraft":
+		var old_value=25 if level==0 else 33+4*(level-1);var new_value=25 if next==0 else 33+4*(next-1)
+		return "Flask base healing: %d → %d HP. Field Medicine adds to this."%[old_value,new_value]
 	if id in ["treasure_hunter","gilded_touch"]:
-		var very=id=="gilded_touch";var step=0.5 if very else 1.5;var base=float(g.CHEST_ODDS[0][2 if very else 1])
-		return "+%.1f%% chance of %s gear per rank. Applies to all chests. Basic chest chance: %.1f%% → %.1f%% next rank."%[step,"Very rare" if very else "Rare",base+step*level,base+step*next]
-	if id=="ruin_training":return "Critical hit damage: %.0f%% → %.0f%% of a normal hit next rank. +2%% per rank, before gear bonuses."%[150.0+2*level,150.0+2*next]
+		var step=3 if id=="treasure_hunter" else 2
+		return "%d%% → %d%% chance. %s"%[step*level,step*next,NODES[id].effect]
+	if id=="tempo":return "Attack speed bonus: +%d%% → +%d%%. The weapon and equipment determine the final attack interval."%[level,next]
+
+	if id=="ruin_training":return "Critical hit damage: %.0f%% → %.0f%% of a normal hit next rank. +3%% per rank, before gear bonuses."%[150.0+3*level,150.0+3*next]
 	if g.run_rules>=9 and id in ["ice_mastery","poison_mastery"]:return "+5% counters applied per hit per rank. Combines with elemental gear and run upgrades. Requires the element on your build."
 	if id in ["ice_mastery","poison_mastery"]:
 		var effect="slower enemy attacks" if id=="ice_mastery" else "less enemy damage"
 		return "1 %s stack: %.1f%% → %.1f%% %s next rank. +5%% stronger effect per rank. Does not add %s. Max 65%%."%["Ice" if id=="ice_mastery" else "Poison",18*(1+0.05*level),18*(1+0.05*next),effect,"Ice" if id=="ice_mastery" else "Poison"]
+	if NODES[id].costs.size()==1:return ("Unlocked. " if level>0 else "Not learned → unlocked. ")+NODES[id].effect
 	return NODES[id].effect

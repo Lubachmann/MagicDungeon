@@ -10,7 +10,7 @@ func check(ok: bool,label: String) -> void:
 func _initialize():call_deferred("run")
 func run():
 	var g=load("res://main.tscn").instantiate();g.save_path="res://tests/.clarity013.json";root.add_child(g);await process_frame;g.session.enabled=false;g.set_process(false);g.new_run(42);g.run_skills={};g.recalculate_stats()
-	check(g.attack==5 and g.armor==0 and g.inventory.is_empty(),"Fresh character: no weapon, 5 attack, 0 armor")
+	check(g.equipped.has("weapon") and g.inventory[g.equipped.weapon].get("archetype","")=="balanced" and g.armor==0,"Fresh character starts with the crafted sword and no armor")
 	var expected={"balanced":[14.0,2.0],"dagger":[7.0,1.0],"axe":[21.0,3.0]}
 	for weapon in expected:
 		var item=g.make_gear("weapon",1,0,[],weapon);g.inventory=[item];g.equipped={"weapon":0};g.recalculate_stats()

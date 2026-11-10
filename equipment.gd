@@ -113,6 +113,26 @@ static func modern_stats(item: Dictionary) -> Dictionary:
 	for affix in item.affixes:
 		var values={"crit_chance":0.03+0.003*n,"speed":0.035+0.006*n,"fire_dps":0.6+0.18*n,"ice_slow":0.035+0.004*n,"acid_strip":0.4+0.12*n,"poison_weak":0.035+0.004*n,"crit_mult":0.10+0.015*n,"health":5.0+1.2*n,"armor":0.75+0.25*n,"evade":0.03+0.0015*n,"vampirism":0.035+0.0015*n}
 		result[affix]=float(result.get(affix,0))+float(values.get(affix,0))*strength
+	# Crafted family identities are stored on the item, preserving existing run snapshots.
+	var style=str(item.get("forge_style",""))
+	if style!="":
+		if item.slot=="weapon":
+			match style:
+				"keen":result.crit_mult=float(result.get("crit_mult",0))+0.05
+				"swift":result.attack*=0.95
+				"bloodbound":
+					if archetype=="dagger":result.evade=maxf(0.0,float(result.get("evade",0))-0.015)
+					else:result.attack*=0.80
+		elif item.slot in ["shield","armor","helmet"]:
+			match style:
+				"keen":result.armor*=1.10;result.speed=float(result.get("speed",0))-0.02
+				"swift":result.armor*=0.85;result.evade=float(result.get("evade",0))+0.02
+				"bloodbound":result.armor*=0.80;result.health=float(result.get("health",0))+3.0
+		elif item.slot=="amulet":
+			match style:
+				"keen":result.crit_mult=float(result.get("crit_mult",0))+0.05
+				"swift":result.evade=float(result.get("evade",0))+0.015
+				"bloodbound":result.health=float(result.get("health",0))+3.0
 	var infusion=item.get("infusion","")
 	var runes={"fire":["fire_dps",0.6+0.18*n],"ice":["ice_slow",0.035+0.004*n],"acid":["acid_strip",0.4+0.12*n],"poison":["poison_weak",0.035+0.004*n],"focus":["crit_chance",0.025+0.002*n],"ruin":["crit_mult",0.10+0.015*n],"veil":["evade",0.025+0.001*n],"blood":["vampirism",0.025+0.001*n]}
 	if runes.has(infusion):var pair=runes[infusion];result[pair[0]]=float(result.get(pair[0],0))+float(pair[1])

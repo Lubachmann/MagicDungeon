@@ -7,6 +7,11 @@ static func preview(g) -> Dictionary:
  before["current_hp"]=g.hp;after.max_hp=maxi(20,after.max_hp-8);after["current_hp"]=mini(g.hp-8,after.max_hp)
  return {"index":index,"item":item,"before":before,"after":after}
 static func draw(g) -> void:
+ if g.run_rules>=20:
+  g.front_end.overlay(Rect2(230,150,820,530));g.ui_icon("fire",Vector2(270,180),48);g.text(Vector2(340,220),"CINDER SHRINE",32,g.GOLD)
+  g.draw_wrapped("Trade 8 current and maximum HP for +3 character attack for this expedition, take 4 embers, or leave.",Vector2(270,285),740,23,g.INK,3)
+  g.button(Rect2(270,390,740,62),"Sacrifice health / +3 attack","shrine_temper",false,g.hp>8 and g.max_hp>28)
+  g.button(Rect2(270,475,740,62),"Take 4 embers","shrine_embers");g.button(Rect2(270,560,740,62),"Leave","shrine_leave");return
  g.front_end.overlay(Rect2(100,65,1080,710));g.ui_icon("fire",Vector2(125,85),42);g.text(Vector2(185,117),"CINDER SHRINE",32,g.GOLD)
  g.draw_wrapped("Trade health for a stronger weapon, or take embers.",Vector2(125,161),340,21,g.INK,2)
  g.front_end.icon_button(Rect2(125,230,340,82),"attack","Weapon +1 level","shrine_temper",false,g.hp>8 and g.max_hp>28 and g.equipped.has("weapon"))

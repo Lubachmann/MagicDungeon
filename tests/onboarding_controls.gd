@@ -19,7 +19,7 @@ func run():
  clear_anim();g.controls.tick(0.15);check(g.pos==Vector2i(5,5),"Holding continues at a paced interval")
  key(KEY_RIGHT,false);clear_anim();g.controls.tick(1.0);check(g.pos==Vector2i(5,5),"Releasing stops movement")
  key(KEY_LEFT);clear_anim();g.mode="fight";g.controls.tick(0.2);g.mode="play";g.controls.tick(1.0);check(g.pos==Vector2i(4,5) and g.controls.held_keys.is_empty(),"Leaving gameplay clears held input")
- g.new_run(91);g.room=Vector2i.ZERO;g.pos=Vector2i(2,5);g.rooms[g.room].walls.clear();g.rooms[g.room].entities.clear()
+ g.new_run(91);g.run_rules=19;g.inventory.clear();g.equipped.clear();g.room=Vector2i.ZERO;g.pos=Vector2i(2,5);g.rooms[g.room].walls.clear();g.rooms[g.room].entities.clear()
  var blocking_item=g.make_gear("weapon",1,0);g.rooms[g.room].entities[Vector2i(3,5)]={"kind":"chest","tier":0,"style":"stash","guardian":Vector2i(-1,-1),"item":blocking_item}
  key(KEY_RIGHT);check(g.mode=="loot","Holding into a chest opens its loot screen")
  g.controls.tick(0.2);g.action("loot_keep");clear_anim();g.controls.tick(1.0)
@@ -29,7 +29,7 @@ func run():
  g.controls.navigate_spatial(Vector2i.DOWN);check(g.buttons[g.session.focused].id=="d","Down chooses the button below")
  g.controls.navigate_spatial(Vector2i.LEFT);check(g.buttons[g.session.focused].id=="c","Left chooses the button on the left")
  g.controls.navigate_spatial(Vector2i.UP);check(g.buttons[g.session.focused].id=="a","Up chooses the button above")
- g.new_run(12);g.inventory.append(g.make_gear("weapon",1,0));g.last_loot_index=0;g.session.focused=12;g.mode="loot";g.queue_redraw();await process_frame;await process_frame
+ g.new_run(12);g.run_rules=19;g.inventory.clear();g.equipped.clear();g.inventory.append(g.make_gear("weapon",1,0));g.last_loot_index=0;g.session.focused=12;g.mode="loot";g.queue_redraw();await process_frame;await process_frame
  check(g.session.focused==0,"A newly opened dialog starts with its first action focused")
  check(g.buttons.size()==2 and g.buttons[0].id=="loot_equip" and g.buttons[1].id=="loot_keep","Loot dialog offers equip and keep actions")
  g.controls.back();check(g.mode=="play" and g.inventory.size()==1 and not g.equipped.has("weapon") and "kept in your bag" in g.toast,"Escape keeps item and gives clear feedback")
@@ -48,8 +48,8 @@ func run():
  check(g.session.start_run(false) and g.guided.active() and g.mode=="play","A new character starts the interactive guide")
  g.queue_redraw();await process_frame;await process_frame
  check(g.buttons.any(func(b):return b.id=="guide_skip"),"Tutorial prompt is visible with a skip action")
- var data=g.rooms[Vector2i.ZERO];var chest=data.chest;check(data.entities[chest].item.slot=="weapon","Tutorial starts with the guaranteed weapon chest")
- check(g.open_chest(chest),"Tutorial chest opens");g.action("loot_equip");g.guided.update();check(g.run_metrics.guide_step==1,"Equipping the weapon advances to inspection")
+ var data=g.rooms[Vector2i.ZERO];check(g.equipped.has("weapon"),"Tutorial starts with an equipped starter weapon")
+ g.guided.update();check(g.run_metrics.guide_step==1,"The starter weapon advances the guide to inspection")
  var enemy_tile=Vector2i(-1,-1)
  for tile in data.entities:
   if data.entities[tile].kind=="enemy":enemy_tile=tile;break

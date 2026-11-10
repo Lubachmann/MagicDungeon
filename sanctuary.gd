@@ -1,6 +1,6 @@
 extends RefCounted
 const DISCOVERIES={
- "smith":{"name":"Mara, the smith","icon":"hammer","floor":1,"reward":"Armory passages offer a choice of weapon type.","found":"Mara: The flame found me first. Find me above."},
+ "smith":{"name":"Mara, the smith","icon":"hammer","floor":1,"reward":"Mara returns to help at the Hearth smithy.","found":"Mara: The flame found me first. Find me above."},
  "cartographer":{"name":"Iven, the cartographer","icon":"map","floor":1,"reward":"The map reveals chest tiers in adjacent rooms.","found":"Iven: The passages change, but treasure leaves a trace."},
  "fire":{"name":"Ember manuscript","icon":"fire","floor":1,"reward":"Adds Combustion and Fire-touched gear to future runs.","found":"A scorched page describes a flame that feeds on heat."},
  "ice":{"name":"Frost manuscript","icon":"ice","floor":2,"reward":"Adds Frost shatter and Frost-touched gear to future runs.","found":"A frozen page remembers the instant before a heart stops."},
@@ -13,7 +13,7 @@ var g
 var selected="elder"
 var return_mode="title"
 func _init(game):g=game
-static func empty() -> Dictionary:return {"discoveries":{},"fragments":{},"ending":"","endings":{}}
+static func empty() -> Dictionary:return {"discoveries":{},"fragments":{},"unseen":{},"ending":"","endings":{}}
 static func migrate_old(career: Dictionary) -> Dictionary:
  var out=empty()
  for id in DISCOVERIES:out.discoveries[id]=true
@@ -22,7 +22,9 @@ static func migrate_old(career: Dictionary) -> Dictionary:
  return out
 func progress() -> Dictionary:
  if not g.career.get("sanctuary") is Dictionary:g.career["sanctuary"]=empty()
- return g.career.sanctuary
+ var p=g.career.sanctuary
+ if not p.get("unseen") is Dictionary:p["unseen"]={}
+ return p
 func begin_run() -> void:
  if not g.session or not g.session.active or g.demo_run or g.run_settings.get("mode","")!="standard":return
  g.run_metrics["sanctuary_start"]=progress().get("discoveries",{}).duplicate(true)
@@ -66,9 +68,13 @@ func commit() -> void:
  if not active():return
  var p=progress()
  for id in g.run_metrics.get("sanctuary_found",[]):
-  if DISCOVERIES.has(id):p.discoveries[id]=true
+  if DISCOVERIES.has(id):
+   if not p.discoveries.has(id):p.unseen[id]=true
+   p.discoveries[id]=true
  for floor_id in g.run_metrics.get("flame_found",[]):
-  if int(floor_id) in range(1,6):p.fragments[str(floor_id)]=true
+  if int(floor_id) in range(1,6):
+   if not p.fragments.has(str(floor_id)):p.unseen["fragment:"+str(floor_id)]=true
+   p.fragments[str(floor_id)]=true
 func begin_ending() -> void:
  g.mode="ending";g.log_line("The flame's heart is before you. Choose its fate.")
 func handle(id: String) -> bool:
@@ -81,7 +87,12 @@ func handle(id: String) -> bool:
   return true
  if id=="sanctuary_expedition" and g.mode=="sanctuary":g.mode="expedition";return true
  if id=="sanctuary_tree" and g.mode=="sanctuary":g.ember_tree.return_mode="sanctuary";g.mode="skills";return true
- if id.begins_with("sanctuary_select:") and g.mode=="sanctuary":selected=id.trim_prefix("sanctuary_select:");return true
+ if id.begins_with("sanctuary_select:") and g.mode=="sanctuary":
+  selected=id.trim_prefix("sanctuary_select:");var p=progress()
+  if p.unseen.has(selected):
+   p.unseen.erase(selected)
+   if not g.session.commit_profile():p.unseen[selected]=true
+  return true
  if id.begins_with("ending_choose:") and g.mode=="ending":
   var choice=id.get_slice(":",1)
   if choice not in ["rekindle","release"]:return true
@@ -92,6 +103,8 @@ func draw() -> void:
  var p=progress();var found=p.get("discoveries",{});var fragments=p.get("fragments",{})
  g.front_end.menu_backdrop();g.text(Vector2(70,80),"THE LAST HEARTH",38,g.GOLD)
  g.text(Vector2(72,115),"Flame fragments %d / 5"%fragments.size(),21,g.TEAL)
+ var goal=g.smithy.goal_info()
+ if not goal.is_empty():g.text(Vector2(390,115),"Goal: "+goal.title+(" / Ready" if goal.ready else " / Complete" if goal.finished else " / In progress"),17,g.TEAL)
  g.panel(Rect2(70,140,590,520))
  for y in range(6):
   for x in range(7):g.draw_texture_rect(g.textures["wall" if y==0 or x==0 or x==6 else "floor"],Rect2(91+x*78,160+y*77,78,77),false,Color("998981"))
@@ -101,25 +114,33 @@ func draw() -> void:
  g.draw_rest_icon(Vector2(317,240),64,false);g.draw_texture_rect(g.textures.player,Rect2(315,470,64,64),false)
  g.button(Rect2(115,355,150,105),"","sanctuary_select:smith");g.ui_icon("hammer",Vector2(165,365),42,Color.WHITE if found.has("smith") else Color("625c66"));g.text(Vector2(129,445),"MARA" if found.has("smith") else "???",19,g.GOLD if found.has("smith") else g.INK)
  g.button(Rect2(455,355,150,105),"","sanctuary_select:cartographer");g.ui_icon("map",Vector2(505,365),42,Color.WHITE if found.has("cartographer") else Color("625c66"));g.text(Vector2(468,445),"IVEN" if found.has("cartographer") else "???",19,g.GOLD if found.has("cartographer") else g.INK)
+ if p.unseen.has("smith"):g.text(Vector2(235,390),"!",22,g.GOLD)
+ if p.unseen.has("cartographer"):g.text(Vector2(575,390),"!",22,g.GOLD)
  g.button(Rect2(265,545,190,50),"The flame","sanctuary_select:elder")
  g.panel(Rect2(680,140,530,520));g.text(Vector2(710,180),"HEARTH JOURNAL",26,g.GOLD)
  var body="The Last Hearth keeps the village alive. Something below consumes its flame. Descend, bring back what you can, and find its heart. The flame carries you home when you fall."
- if selected=="smith":body="Mara has returned. Armory passages let you choose a weapon type on future runs." if found.has("smith") else "Mara vanished near the forge on floor 1. Find her and bring her story home."
+ if selected=="smith":body="Mara has returned. The Hearth smithy crafts equipment from the blueprints and materials you bring home." if found.has("smith") else "The Hearth smithy is open. Mara vanished near the forge on floor 1; find her and bring her story home."
  elif selected=="cartographer":body="Iven has returned. Your map reveals chest tiers in adjacent rooms on future runs." if found.has("cartographer") else "Iven vanished near the hammer chamber on floor 1. Their knowledge could guide future expeditions."
  elif selected in DISCOVERIES:body=DISCOVERIES[selected].reward if found.has(selected) else "Find this manuscript near the %s on floor %d. It unlocks a new skill and gear bonuses for future runs."%[ROOMS[selected],DISCOVERIES[selected].floor]
  elif selected.begins_with("fragment:"):
   var floor_number=int(selected.get_slice(":",1));body=FRAGMENT_STORY[floor_number-1] if fragments.has(str(floor_number)) else "Defeat the Warden on floor %d and return to recover this fragment."%floor_number
  if selected=="elder" and p.get("ending","")!="":body="You rekindled the hearth. The village is warm again, but the voices remain." if p.ending=="rekindle" else "You freed the captive flame. The hearth burns differently now: it belongs to no one."
- g.draw_wrapped(body,Vector2(710,220),465,21,g.INK,7);g.text(Vector2(710,400),"MANUSCRIPTS",19,g.GOLD)
+ g.draw_wrapped(body,Vector2(710,220),465,21,g.INK,7)
+ if selected=="smith":g.button(Rect2(710,335,450,48),"Open the Hearth smithy","smithy_open")
+ if p.unseen.has(selected):g.text(Vector2(1010,180),"NEW",18,g.GOLD)
+ g.text(Vector2(710,400),"MANUSCRIPTS",19,g.GOLD)
  for i in range(4):
   var element=["fire","ice","acid","poison"][i];var at=Vector2(710+i*112,415)
   g.button(Rect2(at,Vector2(100,65)),"","sanctuary_select:"+element);g.ui_icon(element,at+Vector2(10,12),36,Color.WHITE if found.has(element) else Color("625c66"))
+  if p.unseen.has(element):g.text(at+Vector2(54,45),"!",18,g.GOLD)
  g.text(Vector2(710,520),"FRAGMENTS",19,g.GOLD)
  for i in range(5):
   var at=Vector2(710+i*90,535);g.button(Rect2(at,Vector2(78,65)),"","sanctuary_select:fragment:"+str(i+1));g.ui_icon("ember",at+Vector2(20,10),36,Color.WHITE if fragments.has(str(i+1)) else Color("625c66"))
+  if p.unseen.has("fragment:"+str(i+1)):g.text(at+Vector2(55,45),"!",18,g.GOLD)
  g.front_end.icon_button(Rect2(70,695,260,60),"boots","Title" if return_mode in ["dead","won"] else "Back","sanctuary_back")
- g.front_end.icon_button(Rect2(350,695,390,60),"ember","Ember Tree","sanctuary_tree")
- g.front_end.icon_button(Rect2(760,695,450,60),"attack","Enter dungeon","sanctuary_expedition")
+ g.front_end.icon_button(Rect2(350,695,190,60),"ember","Ember Tree","sanctuary_tree")
+ g.front_end.icon_button(Rect2(550,695,190,60),"hammer","Smithy","smithy_open")
+ g.front_end.icon_button(Rect2(760,695,450,60),"attack","New expedition","sanctuary_expedition")
 func draw_ending() -> void:
  g.front_end.overlay(Rect2(170,130,940,580));g.ui_icon("ember",Vector2(605,175),64)
  g.text(Vector2(250,285),"THE HEART OF THE FLAME",34,g.GOLD)

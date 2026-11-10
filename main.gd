@@ -84,6 +84,12 @@ var inventory: Array = []
 var equipped: Dictionary = {}
 var iron = 0
 var gear_stats: Dictionary = {}
+var journal_relic=""
+var journal_page=0
+var journal_source_page=0
+var journal_bounties_open=false
+var journal_permanent_open=false
+var end_loot_page=0
 var bonus = {"attack":0.0,"armor":0.0,"speed":0.0,"crit_chance":0.0,"crit_mult":0.0}
 var base_elements = {"fire":0,"ice":0,"acid":0,"poison":0}
 var equipment_slot = "weapon"
@@ -124,6 +130,8 @@ var forge_menu
 var combat_review
 var ui_help
 var loot_window
+var smithy
+var loadout_menu
 var choice_ui
 var feedback
 var active_ability="guard"
@@ -252,6 +260,8 @@ func _ready() -> void:
 	sanctuary=preload("res://sanctuary.gd").new(self)
 	profiles=preload("res://character_profiles.gd").new(self)
 	stat_ui=preload("res://stat_ui.gd").new(self)
+	smithy=preload("res://smithy.gd").new(self)
+	loadout_menu=preload("res://loadout_menu.gd").new(self)
 	load_progress()
 	new_run()
 	controls=preload("res://game_controls.gd").new(self)
@@ -305,10 +315,11 @@ func save_progress() -> bool:
 func new_run(seed_override: int = -1) -> void:
 	var planned_demo=bool(replay.demo_next) if replay else false
 	if stat_ui:stat_ui.notice_left=0;stat_ui.notice=""
+	if smithy:smithy.clear_notices()
 	if ui_help:ui_help.topic=""
 	active_ability="guard";toxic_echo=0.0
 	if not tactics:tactics=preload("res://combat_tactics.gd").new(self)
-	run_rules=19
+	run_rules=20
 	inspection_tile=Vector2i(-100,-100);inspection_room=inspection_tile;enemy_ability_open=false
 	legacy_levels=[0,0,0]
 	loadout="wanderer"
@@ -369,11 +380,13 @@ func new_run(seed_override: int = -1) -> void:
 	run_seed = rng.randi_range(10000, 99999) if seed_override < 0 else seed_override
 	rng.seed = run_seed
 	if replay:replay.configure_run()
+	if smithy:smithy.start_loadout()
 	if sanctuary:sanctuary.begin_run()
 	revives_left=1 if ember_tree.rank("second_wind")>0 else 0
 	potions=1+ember_tree.rank("flask_reserve")
 	iron=ember_tree.rank("smithcraft")
 	iron+=ember_tree.rank("blastcraft")
+	if run_rules>=20:smithy.cargo().ore+=iron;iron=0
 	bombs=0
 	recalculate_stats()
 	hp = max_hp
@@ -411,7 +424,7 @@ func generate_floor() -> void:
 	Combat.Flow.decorate_floor(self)
 	if world_choices:world_choices.generate()
 	if sanctuary:sanctuary.generate()
-	if run_rules>=15 and floor_number==1:
+	if run_rules>=15 and run_rules<20 and floor_number==1:
 		# Put the only starting chest on a route reachable without a fight.
 		var data=rooms[Vector2i.ZERO];var old: Vector2i=data.chest
 		var starting_chest=data.entities[old]
@@ -477,8 +490,8 @@ func make_room(coord: Vector2i) -> void:
 		for i in range(1 if size.x <= 9 else 2):
 			entities[room_spot(bounds, walls, entities, reserved)] = make_enemy(theme_enemy_type(), depth)
 	else: entities[Vector2i(7,5)] = make_enemy(0,0)
-	if roles[coord] in ["Elite", "Armory"]: entities[room_spot(bounds, walls, entities, reserved)] = {"kind":"iron"}
-	if roles[coord] == "Armory": entities[room_spot(bounds,walls,entities,reserved)] = {"kind":"iron"}
+	if roles[coord] in ["Elite", "Armory"]: entities[room_spot(bounds, walls, entities, reserved)] = {"kind":"ore_deposit" if run_rules>=20 else "iron"}
+	if roles[coord] == "Armory": entities[room_spot(bounds,walls,entities,reserved)] = {"kind":"ore_deposit" if run_rules>=20 else "iron"}
 	if guarded:
 		var guard = make_enemy(1 if roles[coord] == "Elite" else rng.randi_range(0,2), depth, mini(6,depth+2) if run_rules>=15 else -1)
 		guard.name = "Vault champion" if roles[coord]=="Elite" else "Passage sentinel"
@@ -514,7 +527,7 @@ func make_room(coord: Vector2i) -> void:
 		walls.erase(Vector2i(7,2))
 		entities[Vector2i(7,2)] = {"kind":"exit"}
 	for tile in entities:
-		if entities[tile].kind in ["hammer","boots","iron","fountain","equipment","salvage"]: walls.erase(tile)
+		if entities[tile].kind in ["hammer","boots","iron","ore_deposit","fountain","equipment","salvage"]: walls.erase(tile)
 	rooms[coord] = {"walls":walls,"entities":entities,"cleared":false,"seen_crack":false,"seen_water":false,"layout":pattern,"bounds":bounds,"gate":gate,"horizontal_gate":horizontal_gate,"cache":cache,"water_cache":water_cache,"special":special,"decor":{},"chest":Vector2i(-1,-1)}
 
 func room_spot(bounds: Rect2i, walls: Dictionary, entities: Dictionary, reserved: Array) -> Vector2i:
@@ -615,6 +628,7 @@ func legacy_input(event: InputEvent) -> void:
 		ui_theme=1-ui_theme
 		return
 	if event.keycode==KEY_F11:
+		if front_end and front_end.display_pending:front_end.display_finish(false);return
 		toggle_fullscreen()
 		return
 	if event.keycode == KEY_ESCAPE and mode not in ["equipment","floor","relic","loot","character","settings","credits"] and DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN:
@@ -724,7 +738,10 @@ func game_move_player(direction: Vector2i) -> void:
 				if not entity.get("used",false):mode="shrine"
 				else:log_line("The shrine's bargain has been spent.")
 				return
-			"salvage":animate_move(target);log_line("Forge nearby: press E to upgrade, imprint or scrap gear.");return
+			"salvage":
+				if run_rules>=20 and not entity.get("used",false):entity.used=true;smithy.cargo().ore+=3;log_line("Old forge: +3 ore for the Hearth.")
+				else:log_line("This forge has been searched." if run_rules>=20 else "Forge nearby: press E to upgrade, imprint or scrap gear.")
+				animate_move(target);return
 			"chest":
 				if open_chest(target): animate_move(target)
 				return
@@ -760,14 +777,14 @@ func game_move_player(direction: Vector2i) -> void:
 			"water_cache": shards += 5; sfx("pickup"); log_line("Sunken cache: +5 embers.")
 			"boots": boots = true; sfx("equip"); log_line("Tidewalk Boots! Cross water to reach sunken caches.")
 			"equipment":
-				inventory.append(entity.item.duplicate(true))
-				log_line("Found " + Gear.title(entity.item) + ". E to equip.")
+				if run_rules>=20:log_line(smithy.reward(entity.item))
+				else:inventory.append(entity.item.duplicate(true));log_line("Found " + Gear.title(entity.item) + ". E to equip.")
 				sfx("pickup")
 			"iron":
 				var found_iron=1
 				if ember_tree.rank("tinkering")>0 and not iron_bonus_claimed:found_iron+=1;iron_bonus_claimed=true
-				iron+=found_iron
-				log_line("+%d iron. Press E to upgrade equipment when ready."%found_iron)
+				if run_rules>=20:smithy.cargo().ore+=found_iron;log_line("+%d ore for the Hearth."%found_iron)
+				else:iron+=found_iron;log_line("+%d iron. Press E to upgrade equipment when ready."%found_iron)
 				sfx("pickup")
 			"fountain":
 				var restored = mini(roundi((30+3*ember_tree.rank("wellkeeper"))*(0.75 if replay.vow("famine")>0 else 1.0)), max_hp - hp)
@@ -782,6 +799,10 @@ func game_move_player(direction: Vector2i) -> void:
 					var heal=mini(2,max_hp-hp);hp+=heal;summary.healed+=heal;log_line("Restorative dust: +%d HP."%heal)
 				elif entity.contents==1:shards+=1;log_line("An ember inside the urn.")
 				else:log_line("The old urn crumbles.")
+			"ore_deposit":
+				var mined=2+floor_number+ember_tree.rank("salvage_master")
+				if smithy:smithy.cargo().ore+=mined
+				sfx("pickup");log_line("Mined %d ore for the Hearth."%mined)
 			"potion":
 				potions += 1; sfx("pickup"); log_line("Healing flask collected.")
 				if guided:guided.potion_found()
@@ -802,6 +823,7 @@ func game_move_player(direction: Vector2i) -> void:
 	animate_move(target)
 
 func _process(delta: float) -> void:
+	if smithy:smithy.tick_notices(delta)
 	if choice_ui:choice_ui.tick(delta)
 	if controls:controls.tick(delta)
 	if guided:guided.update()
@@ -809,6 +831,7 @@ func _process(delta: float) -> void:
 	if stat_ui:stat_ui.tick(delta)
 	if mastery and mode not in ["relic","upgrade"]:mastery.tick(delta)
 	pulse += delta
+	if front_end:front_end.tick()
 	if feedback:feedback.tick(delta)
 	if mode in ["play","fight","bomb","inspect"]:summary.time+=delta
 	attack_swing=maxf(0,attack_swing-delta)
@@ -886,8 +909,10 @@ func forecast(enemy: Dictionary) -> Dictionary:
 	return Combat.predict(state)
 
 func finish_run(won: bool) -> void:
+	end_loot_page=0
 	if mode in ["dead", "won"]: return
 	if sanctuary:sanctuary.commit()
+	if smithy and run_rules>=20:smithy.commit()
 	if replay:replay.record(won)
 	mode = "won" if won else "dead"
 	sfx("victory" if won else "death")
@@ -897,6 +922,8 @@ func finish_run(won: bool) -> void:
 	save_progress()
 
 func action(id: String) -> void:
+	if loadout_menu and loadout_menu.handle(id):queue_redraw();return
+	if smithy and smithy.handle(id):queue_redraw();return
 	if sanctuary and sanctuary.handle(id):
 		if session:session.checkpoint()
 		queue_redraw();return
@@ -931,9 +958,24 @@ func action(id: String) -> void:
 		if id in ["toggle_theme","sound_toggle","volume_down","volume_up"]:session.save_preferences()
 
 func game_action(id: String) -> void:
+	if mode=="character" and id=="journal_permanent":journal_permanent_open=true;return
+	if mode=="character" and journal_permanent_open and id in ["journal_permanent_back","close_menu"]:journal_permanent_open=false;return
+	if mode=="character" and id=="journal_bounties":journal_bounties_open=true;return
+	if mode=="character" and journal_bounties_open and id in ["journal_bounties_back","close_menu"]:journal_bounties_open=false;return
+	if mode=="character" and id=="journal_goal_source":journal_source_page+=1;return
+	if mode in ["dead","won"] and id=="end_loot_prev":end_loot_page=maxi(0,end_loot_page-1);return
+	if mode in ["dead","won"] and id=="end_loot_next":end_loot_page+=1;return
+	if mode=="character" and id.begins_with("journal_relic:"):
+		journal_relic=id.trim_prefix("journal_relic:");return
+	if mode=="character" and id=="journal_prev":journal_page=maxi(0,journal_page-1);return
+	if mode=="character" and id=="journal_next":journal_page+=1;return
+	if id=="extract_prompt" and mode=="play" and room==Vector2i.ZERO and run_rules>=20:mode="extract";return
+	if id=="extract_cancel" and mode=="extract":mode="play";return
+	if id=="extract_confirm" and mode=="extract" and room==Vector2i.ZERO and run_rules>=20:
+		run_metrics["extracted"]=true;finish_run(false);return
 	if tactics and tactics.handle(id):return
 	if id=="toggle_map" and mode in ["play","fight"]:map_pinned=not map_pinned;return
-	if id=="character" and mode=="play":mode="character";return
+	if id=="character" and mode=="play":journal_bounties_open=false;journal_permanent_open=false;mode="character";return
 	if id=="settings" and mode=="play":mode="settings";return
 	if id=="show_credits" and mode=="settings":mode="credits";return
 	if id=="close_credits" and mode=="credits":mode="settings";return
@@ -1049,7 +1091,7 @@ func _draw() -> void:
 	buttons.clear()
 	if controls and session:controls.sync_focus()
 	if stat_ui:stat_ui.begin()
-	if mode not in ["title","confirm_new","profiles","expedition","codex","skills"]:
+	if mode not in ["title","confirm_new","profiles","expedition","loadout","smithy","codex","skills"]:
 		var shake=feedback.camera_offset() if feedback else Vector2.ZERO
 		draw_set_transform(draw_offset+shake*draw_scale,0.0,Vector2.ONE*draw_scale)
 		draw_world()
@@ -1070,6 +1112,12 @@ func _draw() -> void:
 	elif mode=="curse":dungeon_threads.draw_curse()
 	elif mode=="branch":branch_paths.draw()
 	elif mode=="sanctuary":sanctuary.draw()
+	elif mode=="smithy":smithy.draw()
+	elif mode=="loadout":loadout_menu.draw()
+	elif mode=="extract":
+		front_end.overlay(Rect2(315,260,650,260));text(Vector2(350,315),"LEAVE THE EXPEDITION?",27,GOLD)
+		draw_wrapped("Keep all blueprints and materials. Your run levels and skills reset.",Vector2(350,358),570,20,INK,2)
+		button(Rect2(350,430,265,55),"Return home","extract_confirm");button(Rect2(645,430,265,55),"Keep exploring","extract_cancel")
 	elif mode=="ending":sanctuary.draw_ending()
 	elif mode=="discovery":sanctuary.draw_discovery()
 	elif mode=="decision":
@@ -1096,6 +1144,9 @@ func _draw() -> void:
 	if menu_keyboard and session and mode not in ["play","fight","inspect","bomb"] and not buttons.is_empty():
 		session.focused=clampi(session.focused,0,buttons.size()-1)
 		draw_rect(buttons[session.focused].rect.grow(-3),ui_color(TEAL),false,2)
+	if run_rules>=20 and mode=="play" and room==Vector2i.ZERO:
+		button(Rect2(340,738,260,66),"Return to Hearth","extract_prompt")
+	if smithy:smithy.draw_notice()
 	if guided:guided.draw()
 	if mastery and mode not in ["relic","upgrade"]:mastery.draw_notice()
 	if feedback:feedback.draw_ui()
@@ -1256,6 +1307,8 @@ func draw_entity(center: Vector2, entity: Dictionary) -> void:
 		draw_texture_rect(textures["hammer"],rect.grow(-8),false)
 		text(center+Vector2(-5,-25),"S",14,GOLD)
 		return
+	elif kind == "ore_deposit":
+		ui_icon("iron",center-Vector2(24,24),48);return
 	elif kind == "potion":
 		ui_icon("potion",center-Vector2(24,24),48)
 		return
@@ -1302,7 +1355,7 @@ func draw_upgrade() -> void:
 
 func draw_end() -> void:
 	front_end.menu_backdrop();panel(Rect2(160,55,960,730))
-	text(Vector2(210,125),"THE FLAME ENDURES" if mode=="won" and sanctuary and sanctuary.active() else "ASCENDED" if mode=="won" else "FALLEN",42,GOLD)
+	text(Vector2(210,125),"RETURNED TO THE HEARTH" if run_metrics.get("extracted",false) else "THE FLAME ENDURES" if mode=="won" and sanctuary and sanctuary.active() else "ASCENDED" if mode=="won" else "FALLEN",42,GOLD)
 	var values=[str(floor_number),str(kills),"%dm %02ds"%[int(summary.time/60),int(summary.time)%60],str(replay.bank_reward(shards))]
 	for i in range(4):
 		var at=Vector2(210+i*220,170);panel(Rect2(at,Vector2(200,105)))
@@ -1313,10 +1366,41 @@ func draw_end() -> void:
 		var at=Vector2(210+(i%12)*72,315+(i/12)*70)
 		ui_icon(replay.relic_icon(relics[i]),at,48)
 		if Rect2(at,Vector2(48,48)).has_point(design_mouse()):draw_wrapped(RELICS[relics[i]][0],Vector2(210,480),850,22,GOLD,1)
-	if death_reason!="":draw_wrapped(death_reason,Vector2(210,525),850,19,Color("e1a18e"),2)
-	if sanctuary and sanctuary.active() and (not run_metrics.get("sanctuary_found",[]).is_empty() or not run_metrics.get("flame_found",[]).is_empty()):text(Vector2(210,566),"Returned: %d discoveries / %d fragments"%[run_metrics.get("sanctuary_found",[]).size(),run_metrics.get("flame_found",[]).size()],18,TEAL)
-	text(Vector2(210,592),"Daily best: %d"%int(career.daily.get(run_settings.get("date",""),0)) if run_settings.get("mode","")=="daily" else "Bank %d / Seed %d / %d dodges"%[bank,run_seed,summary.get("evades",0)],18,TEAL)
-	front_end.icon_button(Rect2(210,635,410,65),"ember","Ember Tree","skills")
+	if death_reason!="":draw_wrapped(death_reason,Vector2(210,480),850,18,Color("e1a18e"),1)
+	if run_rules>=20 and smithy:
+		var cargo=smithy.cargo();var retained=not demo_run and run_settings.get("mode","")!="daily"
+		text(Vector2(210,512),"RETURNED DISCOVERIES" if retained else "DAILY / PRACTICE MATERIALS AND BLUEPRINTS ARE NOT SAVED",18,GOLD)
+		var found=[]
+		for id in cargo.blueprints:
+			if smithy.RECIPES.has(id):found.append({"id":id,"kind":"equipment","name":smithy.RECIPES[id][0]})
+		for element in cargo.elements:found.append({"id":element,"kind":"rune","name":str(element).capitalize()+" rune"})
+		for discovery in run_metrics.get("sanctuary_found",[]):
+			if sanctuary.DISCOVERIES.has(discovery):found.append({"id":discovery,"kind":"discovery","name":sanctuary.DISCOVERIES[discovery].name})
+		for fragment in run_metrics.get("flame_found",[]):found.append({"id":fragment,"kind":"fragment","name":"Floor "+str(fragment)+" fragment"})
+		var pages=maxi(1,ceili(float(found.size())/3.0));end_loot_page=clampi(end_loot_page,0,pages-1)
+		if found.is_empty():text(Vector2(210,542),"No new discoveries",17,TEAL)
+		for i in range(mini(3,found.size()-end_loot_page*3)):
+			var entry=found[end_loot_page*3+i];var at=Vector2(210+i*280,522)
+			if entry.kind=="rune":ui_icon(entry.id,at,23)
+			elif entry.kind=="discovery":ui_icon(sanctuary.DISCOVERIES[entry.id].icon,at,23)
+			elif entry.kind=="fragment":ui_icon("ember",at,23)
+			else:
+				var item=smithy.make_item(entry.id,1);gear_icon(item.slot,at,23,Gear.COLORS[item.rarity],item)
+			draw_wrapped(entry.name,at+Vector2(28,19),245,16,TEAL,1)
+		if pages>1:
+			button(Rect2(850,485,50,28),"<","end_loot_prev",false,end_loot_page>0)
+			text(Vector2(910,506),"%d / %d"%[end_loot_page+1,pages],16,TEAL)
+			button(Rect2(1010,485,50,28),">","end_loot_next",false,end_loot_page<pages-1)
+		var materials=[]
+		for material in smithy.MATERIALS:
+			if int(cargo.get(material,0))>0:materials.append({"id":material,"value":str(cargo[material])})
+		for i in range(materials.size()):smithy.draw_materials([materials[i]],Vector2(210+(i%3)*275,550+int(i/3)*25),275,18)
+		var goal=smithy.goal_info()
+		if not retained:text(Vector2(210,620),"Daily best and banked embers are kept." if run_settings.get("mode","")=="daily" and not demo_run else "Practice materials and blueprints are not kept.",17,TEAL)
+		elif not goal.is_empty():text(Vector2(210,620),"Goal: "+goal.title+" / "+("Completed" if goal.finished else "Ready to craft" if goal.ready else "More to find"),17,TEAL)
+		else:text(Vector2(210,620),"Blueprints, materials and banked embers are kept.",17,TEAL)
+	else:text(Vector2(210,592),"Bank %d / Seed %d / %d dodges"%[bank,run_seed,summary.get("evades",0)],18,TEAL)
+	front_end.icon_button(Rect2(210,635,410,65),"hammer","Smithy","smithy_open")
 	front_end.icon_button(Rect2(650,635,420,65),"attack","Again","restart")
 	front_end.icon_button(Rect2(210,720,235,44),"ember","Hearth","sanctuary")
 	front_end.icon_button(Rect2(465,720,285,44),"attack","Fight recap","recap_open")
@@ -1619,6 +1703,11 @@ func defeat_enemy(tile: Vector2i, enemy: Dictionary) -> void:
 	rooms[room].entities.erase(tile)
 	var flasks_before=potions
 	if replay:replay.enemy_defeated(enemy)
+	if smithy and run_rules>=20:
+		var c=smithy.cargo();c.monster+=1+int(enemy.get("elite",false));c.boss+=1 if enemy.type==3 else 0
+		if enemy.type==1 and floor_number>=2:c.alloy+=1
+		elif enemy.type==2 and floor_number>=3:c.essence+=1
+		elif enemy.type==0 and floor_number>=4:c.relic+=1
 	var reward = 12 if enemy.type == 3 else (6 if enemy.elite else 2)
 	if enemy.get("room_extra",false):reward=maxi(1,reward/2)
 	shards += reward
@@ -1710,6 +1799,7 @@ func open_equipment() -> void:
 	inventory_page=0
 
 func equipment_action(id: String) -> void:
+	if run_rules>=20 and id in ["salvage_selected","equip_selected","unequip_selected","iron_selected"]:log_line("Equipment is fixed during expeditions. Visit the Hearth smithy.");return
 	if id=="salvage_selected":salvage_selected();return
 	if id=="close_equipment":resume_play();return
 	if id.begins_with("slot:"):
@@ -1748,7 +1838,7 @@ func draw_equipment() -> void:
 	panel(Rect2(35,65,1210,710),Color("101e29"))
 	text(Vector2(65,110),"EQUIPMENT",27,GOLD)
 	stat_ui.icon("iron",Vector2(65,121),24)
-	text(Vector2(96,141),"Iron %d  /  Fragments %d/3  /  %s"%[iron,iron_fragments,"Scrap uses left %d/3"%salvage_charges if near_forge() else "Visit a forge to scrap spare gear"],17,TEAL)
+	text(Vector2(96,141),("Expedition loadout / craft and change gear at the Hearth" if run_rules>=20 else "Iron %d  /  Fragments %d/3  /  %s"%[iron,iron_fragments,"Scrap uses left %d/3"%salvage_charges if near_forge() else "Visit a forge to scrap spare gear"]),17,TEAL)
 	button(Rect2(890,83,160,40),"Gear help ?","help:equipment")
 	button(Rect2(450,83,205,40),"Your build","build_open")
 	button(Rect2(665,83,205,40),"Unprotect" if selected_item>=0 and selected_item<inventory.size() and inventory[selected_item].get("kept",false) else "Protect item","keep_selected")
@@ -1809,8 +1899,8 @@ func draw_equipment() -> void:
 		else:paged=preload("res://equipment_presenter.gd").draw_comparison(self,worn,item,Vector2(812,315),380,198,true)
 		if not paged:text(Vector2(812,530),("Ability: "+choice_ui.ability_name(item)) if item.slot=="weapon" else "Total stats / current → equipped",14,Color("78929d"))
 		var already=equipped.get(item.slot,-1)==selected_item
-		button(Rect2(810,540,240,45),"Equipped" if already else "Equip selected","equip_selected",already,not already)
-		button(Rect2(1060,540,140,45),"Unequip","unequip_selected",false,equipped.has(equipment_slot))
+		button(Rect2(810,540,240,45),"Equipped" if already else "Equip selected","equip_selected",already,not already and run_rules<20)
+		button(Rect2(1060,540,140,45),"Unequip","unequip_selected",false,equipped.has(equipment_slot) and run_rules<20)
 		if item.slot=="weapon" and Rect2(810,177,390,70).has_point(design_mouse()):
 			panel(Rect2(802,365,405,166));draw_wrapped(choice_ui.weapon_description(item),Vector2(818,398),370,20,TEAL,5)
 
@@ -1840,6 +1930,10 @@ func draw_equipment() -> void:
 
 
 func draw_inline_crafting() -> void:
+	if run_rules>=20:
+		text(Vector2(810,630),"Loadout fixed for this expedition.",17,TEAL)
+		text(Vector2(810,660),"Craft and equip at the Hearth smithy.",17,INK)
+		return
 	var nearby=near_forge();var valid=selected_item>=0 and selected_item<inventory.size()
 	if nearby:draw_rect(Rect2(800,588,410,112),Color(TEAL,0.5),false,2)
 	var can_upgrade=valid and iron>0 and (run_rules<11 or nearby)
@@ -1929,7 +2023,7 @@ func decorate_treasure(coord: Vector2i) -> void:
 		chest=room_spot(b,data.walls,data.entities,reserved)
 		tier=0
 	var item=chest_item(tier,style_id=="warden")
-	if run_rules>=15 and floor_number==1 and coord==Vector2i.ZERO:
+	if run_rules>=15 and run_rules<20 and floor_number==1 and coord==Vector2i.ZERO:
 		var archetypes=["balanced","dagger","axe","greatblade","ember"]
 		var weapon: String=archetypes[rng.randi_range(0,archetypes.size()-1)]
 		var rank=ember_tree.rank("smithcraft")
@@ -1939,7 +2033,7 @@ func decorate_treasure(coord: Vector2i) -> void:
 		item=make_gear("weapon",2 if rank>=2 else 1,rarity,affixes,weapon)
 		if rank==0:item["plain"]=true
 	data.entities[chest]={"kind":"chest","tier":tier,"style":style_id,"guardian":guardian,"item":item}
-	if run_rules>=15 and floor_number==1 and coord==Vector2i.ZERO:data.entities[chest]["starting_weapon"]=true
+	if run_rules>=15 and run_rules<20 and floor_number==1 and coord==Vector2i.ZERO:data.entities[chest]["starting_weapon"]=true
 	data.chest=chest
 
 func clear_motif(data: Dictionary, tiles: Array) -> void:
@@ -2006,6 +2100,15 @@ func open_chest(tile: Vector2i) -> bool:
 		sfx("error")
 		return false
 	if chest.get("cursed",false) and not chest.get("paid",false):puzzle_tile=tile;mode="curse";return false
+	if run_rules>=20 and smithy:
+		var reward=smithy.reward(chest.item,int(chest.tier));shards+=3+chest.tier*3;summary.chests+=1;chest.kind="opened_chest"
+		if rng.randf()<0.03*ember_tree.rank("treasure_hunter"):smithy.cargo().ore+=2;reward+=" / +2 ore"
+		if rng.randf()<0.02*ember_tree.rank("gilded_touch"):smithy.cargo().boss+=1;reward+=" / +1 core"
+		if chest.get("ward_won",false):smithy.cargo().ore+=3;reward+=" / +3 warded ore"
+		if chest.has("key_id"):
+			floor_keys.erase(chest.key_id)
+			if chest.key_id=="copper":floor_flags["copper_spent"]="treasure"
+		sfx("pickup");log_line(reward+". Returns to the Hearth.");return true
 	inventory.append(chest.item.duplicate(true))
 	last_loot_index=inventory.size()-1
 	last_chest_tier=chest.tier
@@ -2075,7 +2178,7 @@ func draw_hud() -> void:
 	text(Vector2(674,31),"EMBERS",18)
 	text(Vector2(760,34),str(shards),27,GOLD)
 	stat_ui.icon("iron",Vector2(859,10),26)
-	text(Vector2(895,34),str(iron),27,GOLD)
+	text(Vector2(895,34),str(smithy.cargo().ore if run_rules>=20 else iron),27,GOLD)
 	text(Vector2(64,32),(tactics.FLOORS[posmod(floor_number-1,5)][0] if run_rules>=4 else THEMES[theme_index()]).to_upper(),24,Color("c8bea8"))
 	text(Vector2(1060,32),"FLOOR %d / %s"%[floor_number,str(floor_limit()) if floor_limit()>0 else "INF"],20,Color("c8bea8"))
 	panel(Rect2(58,46,370,93))
@@ -2111,7 +2214,9 @@ func draw_hud() -> void:
 		button(Rect2(at,Vector2(260,66)),"","heal" if i==0 else "bomb",mode=="bomb" and i==1,ready)
 		ui_icon("potion" if i==0 else "bomb",at+Vector2(12,8),48)
 		text(at+Vector2(80,25),("HEAL / " if i==0 else "BOMB / ")+(controls.label("heal" if i==0 else "bomb") if controls else "H" if i==0 else "B"),18)
-		text(at+Vector2(80,55),"%d %s"%[count,"flasks" if i==0 else "bombs"],27,GOLD if count>0 else Color("8a7f83"))
+		var flask_power=(33+4*(ember_tree.rank("flaskcraft")-1) if ember_tree.rank("flaskcraft")>0 else 25)+2*ember_tree.rank("field_medicine")
+		var flask_heal=mini(maxi(0,max_hp-(int(battle.hp) if mode=="fight" and not battle.is_empty() else hp)),roundi(flask_power*(0.75 if replay.vow("famine")>0 else 1.0)))
+		text(at+Vector2(80,55),"%d / +%d HP"%[count,flask_heal] if i==0 else "%d bombs"%count,23,GOLD if count>0 else Color("8a7f83"))
 		if i==0 and ready and hp<float(max_hp)*0.45:draw_rect(Rect2(at,Vector2(260,66)).grow(-2),TEAL,false,2)
 
 	button(Rect2(1156,756,68,44),"...","settings",false,mode=="play")
@@ -2162,7 +2267,7 @@ func draw_context() -> void:
 		panel(Rect2(972,210,260,300));text(Vector2(988,250),"SANCTUARY",22,GOLD)
 		draw_wrapped(str(info.get("name","Discovery"))+". Step here to bring this discovery back after your run.",Vector2(988,300),225,20,INK,8);return
 	if world_choices and world_choices.inspect(entity):return
-	if kind not in ["enemy","chest","salvage","fountain","iron","shrine","dungeon_key","brazier","reliquary","urn"]:return
+	if kind not in ["enemy","chest","salvage","fountain","iron","ore_deposit","shrine","dungeon_key","brazier","reliquary","urn"]:return
 	panel(Rect2(972,210,260,560 if kind=="enemy" and mode=="fight" and run_rules>=9 else 470))
 	if kind=="enemy":
 		var roster=preload("res://enemy_roster.gd")
@@ -2185,14 +2290,20 @@ func draw_context() -> void:
 			var cy=744.0 if run_rules>=9 else 658.0;var center=Vector2(1003,cy)
 			draw_arc(center,11,0,TAU,32,Color("524641"),4.0,true)
 			if progress>0.0:draw_arc(center,11,-PI/2,-PI/2+TAU*progress,32,GOLD,4.0,true)
-			text(Vector2(1022,cy+6),"NEXT ATTACK"+(" / HEAVY" if entity.trait=="heavy" and (battle.e_hits+1)%3==0 else ""),16,GOLD)
+			var attack_kind="FOLLOW-UP" if battle.get("tide_followup",false) else "SPECIAL" if Combat.special_for_hit(battle,int(battle.e_hits)+1) and not battle.get("disrupted",false) else "STRIKE"
+			text(Vector2(1022,cy+6),"%s / %.1fs"%[attack_kind,remain],16,Color("ef9c83") if attack_kind!="STRIKE" else GOLD)
 		fight_preview.draw(entity)
 		draw_wrapped(enemy_explanation(entity),Vector2(988,534),226,15,INK,2)
 		text(Vector2(988,583),"Ability details / hover here",15,TEAL)
+		if run_rules>=20 and mode!="fight":
+			var material="boss" if int(entity.type)==3 else "alloy" if int(entity.type)==1 and floor_number>=2 else "essence" if int(entity.type)==2 and floor_number>=3 else "relic" if int(entity.type)==0 and floor_number>=4 else "monster"
+			ui_icon(smithy.MATERIAL_ICONS[material],Vector2(988,594),22)
+			text(Vector2(1017,613),"Drop: "+smithy.LABELS[material],16,GOLD)
 		enemy_ability_open=mode=="inspect" or Rect2(988,518,226,80).has_point(design_mouse()) or (enemy_ability_open and Rect2(610,330,378,350).has_point(design_mouse()))
 		if enemy_ability_open:
 			panel(Rect2(610,330,345,350));text(Vector2(630,369),"ENEMY ABILITY",23,GOLD)
-			draw_wrapped(enemy_explanation(entity),Vector2(630,407),305,20,INK,10)
+			draw_wrapped(enemy_explanation(entity),Vector2(630,407),305,20,INK,8)
+			text(Vector2(630,642),"Armor reduces physical hits.",16,TEAL)
 		if mode=="fight" and run_rules>=4:draw_wrapped(Combat.intent(battle),Vector2(988,608),226,15,GOLD,2)
 		if mode=="fight" and run_rules<9:draw_wrapped(status_text(battle),Vector2(988,648),226,13,TEAL,1)
 		if mode=="fight" and run_rules>=9:
@@ -2214,7 +2325,10 @@ func draw_context() -> void:
 		text(Vector2(988,245),CHEST_NAMES[entity.tier],21,CHEST_COLORS[entity.tier])
 		text(Vector2(988,274),"TREASURE CHEST",16)
 		draw_wrapped(chest_access(entity),Vector2(988,319),226,16,INK,3)
-		if entity.get("starting_weapon",false):
+		if run_rules>=20:
+			text(Vector2(988,410),"BLUEPRINT + EMBERS",18,GOLD)
+			draw_wrapped("Known blueprints become ore. Warded chests give extra ore.",Vector2(988,450),225,18,TEAL,4)
+		elif entity.get("starting_weapon",false):
 			text(Vector2(988,410),"RANDOM WEAPON",18,GOLD)
 			text(Vector2(988,455),"%s / Level %d"%[Gear.RARITIES[entity.item.rarity],entity.item.level],18,TEAL)
 		elif entity.get("ward_won",false):
@@ -2225,8 +2339,8 @@ func draw_context() -> void:
 			text(Vector2(988,410),"ITEM ODDS",18,GOLD)
 			var odds=Gear.chest_odds(replay.odds(entity.tier),str(entity.get("item",{}).get("slot","")),run_rules)
 			for i in range(3):text(Vector2(988,445+i*29),"%s  %.1f%%"%[Gear.RARITIES[i],odds[i]],18)
-		if entity.has("ward_item") and not entity.get("ward_won",false):draw_wrapped("Rune disabled: standard reward." if entity.get("ward_disabled",false) else "Beat its guardian with the rune active for Very rare gear.",Vector2(988,525),226,18,GOLD,2)
-		text(Vector2(988,581),"One item + %d embers"%(3+entity.tier*3),15)
+		if run_rules<20 and entity.has("ward_item") and not entity.get("ward_won",false):draw_wrapped("Rune disabled: standard reward." if entity.get("ward_disabled",false) else "Beat its guardian with the rune active for Very rare gear.",Vector2(988,525),226,18,GOLD,2)
+		text(Vector2(988,581),("Blueprint" if run_rules>=20 else "One item")+" + %d embers"%(3+entity.tier*3),15)
 		draw_wrapped("Step onto the chest to open it.",Vector2(988,640),225,15)
 	elif kind in ["dungeon_key","brazier","reliquary"]:
 		text(Vector2(988,250),{"dungeon_key":"COPPER KEY","brazier":entity.get("rune","").to_upper()+" BRAZIER","reliquary":"SEALED RELIQUARY"}[kind],21,GOLD)
@@ -2236,21 +2350,24 @@ func draw_context() -> void:
 		draw_wrapped(explanation,Vector2(988,300),225,20,INK,12)
 	elif kind=="shrine":
 		text(Vector2(988,250),"CINDER SHRINE",22,GOLD)
-		draw_wrapped("Spent." if entity.get("used",false) else "Choose: +1 weapon level for 8 current and max HP, take embers, or leave.",Vector2(988,300),225,18,INK,8)
+		draw_wrapped("Spent." if entity.get("used",false) else ("Choose: +3 attack for this run for 8 current and max HP, take embers, or leave." if run_rules>=20 else "Choose: +1 weapon level for 8 current and max HP, take embers, or leave."),Vector2(988,300),225,18,INK,8)
 	elif kind=="salvage":
 		text(Vector2(988,250),"SCRAP FORGE",21,GOLD)
-		draw_wrapped("Scrap spare gear for fragments. 3 fragments = 1 iron. Equipped gear cannot be scrapped.",Vector2(988,300),225,17,INK,7)
+		draw_wrapped(("An old forge: collect ore for the Hearth." if run_rules>=20 else "Scrap spare gear for fragments. 3 fragments = 1 iron. Equipped gear cannot be scrapped."),Vector2(988,300),225,17,INK,7)
 		text(Vector2(988,510),"Uses left: %d / 3"%salvage_charges,18)
+	elif kind=="ore_deposit":
+		text(Vector2(988,250),"ORE DEPOSIT",22,GOLD)
+		draw_wrapped("Step onto the deposit to mine ore. Ore is kept after this expedition and used at the Hearth smithy.",Vector2(988,300),225,18,INK,8)
 	elif kind=="urn":
 		text(Vector2(988,250),"Old urn",22,GOLD)
 		draw_wrapped("Step onto this urn to break it. Find 2 HP, 1 ember, or nothing.",Vector2(988,300),225,18)
 	else:
 		if kind=="iron":stat_ui.icon("iron",Vector2(988,227),26)
 		text(Vector2(1021 if kind=="iron" else 988,250),"Fountain" if kind=="fountain" else "Iron",22,GOLD)
-		draw_wrapped("Restores up to %d HP once."%roundi((30+3*ember_tree.rank("wellkeeper"))*(0.75 if replay.vow("famine")>0 else 1.0)) if kind=="fountain" else "Upgrade any owned item by one level.",Vector2(988,300),225,18)
+		draw_wrapped("Restores up to %d HP once."%roundi((30+3*ember_tree.rank("wellkeeper"))*(0.75 if replay.vow("famine")>0 else 1.0)) if kind=="fountain" else ("Ore for the Hearth smithy. Keep it after returning." if run_rules>=20 else "Upgrade any owned item by one level."),Vector2(988,300),225,18)
 
 func enemy_explanation(enemy: Dictionary) -> String:
-	if enemy.get("ward_active",false):return "Rune in room %s: heals %d HP, 3 times. Disable it, or win powered for Very rare gear."%[room_number(enemy.ward_source),enemy.regen]
+	if enemy.get("ward_active",false):return ("Rune in room %s: heals %d HP, 3 times. Disable it, or win powered for extra ore." if run_rules>=20 else "Rune in room %s: heals %d HP, 3 times. Disable it, or win powered for Very rare gear.")%[room_number(enemy.ward_source),enemy.regen]
 	if enemy.get("family","") in Combat.Flow.FAMILIES:return Combat.Flow.FAMILIES[enemy.family].desc
 	if enemy.get("signature","") in Combat.Flow.BOSSES:
 		if enemy.signature=="castellan" and run_rules<9:return "Below 50% HP: blocks 1 hit. Greatblades break the guard; fire ignores it."
@@ -2315,7 +2432,7 @@ func map_features(coord: Vector2i) -> Array[String]:
 		elif entity.kind=="build_cache":result.append("C+")
 		elif entity.kind=="rest_site" and not entity.get("used",false):result.append("Rest")
 		elif entity.kind=="fountain":result.append("F")
-		elif entity.kind=="iron" and "I" not in result:result.append("I")
+		elif entity.kind in ["iron","ore_deposit"] and "I" not in result:result.append("I")
 		elif entity.kind=="dungeon_key":result.append("K")
 		elif entity.kind=="reliquary" and not entity.used:result.append("R")
 		elif entity.kind=="brazier":result.append("Sun" if entity.rune=="sun" else "Moon")
@@ -2324,34 +2441,70 @@ func map_features(coord: Vector2i) -> Array[String]:
 		elif entity.kind=="enemy" and entity.get("gatekeeper",false):result.append("G")
 	return result
 
+func draw_permanent_journal() -> void:
+	var p=smithy.data()
+	text(Vector2(158,132),"PERMANENT PROGRESS",28,GOLD)
+	draw_wrapped("Saved character progress. Current run cargo is shown in the journal and is added when the run ends.",Vector2(158,175),900,19,INK,2)
+	ui_icon("ember",Vector2(158,220),28);text(Vector2(198,243),"Banked embers: %d"%bank,20,GOLD)
+	ui_icon("book",Vector2(158,270),28);text(Vector2(198,293),"Blueprints: %d / %d"%[smithy.blueprint_count(p),smithy.RECIPES.size()],20,TEAL)
+	ui_icon("hammer",Vector2(158,320),28);text(Vector2(198,343),"Crafted equipment: %d"%p.items.size(),20,TEAL)
+	text(Vector2(158,400),"STORED MATERIALS",20,GOLD)
+	var resources=[]
+	for material in smithy.MATERIALS:resources.append({"id":material,"value":str(p.materials[material])})
+	for i in range(resources.size()):smithy.draw_materials([resources[i]],Vector2(158+(i%3)*315,425+int(i/3)*45),300,22)
+	text(Vector2(158,565),"Ember Tree: %d embers invested"%tree_spent,20,TEAL)
+	button(Rect2(158,680,300,48),"Back to journal","journal_permanent_back")
 func draw_character() -> void:
 	draw_rect(Rect2(0,0,1280,840),Color(0.02,0.02,0.03,0.95))
 	panel(Rect2(120,80,1040,680))
-	text(Vector2(158,125),"CHARACTER / JOURNAL",27,GOLD)
+	if journal_bounties_open:replay.draw_bounty_panel();return
+	if journal_permanent_open:draw_permanent_journal();return
+	text(Vector2(158,125),"CURRENT RUN / JOURNAL",27,GOLD)
 	close_button(Rect2(1075,95,45,42),"close_menu")
 	text(Vector2(158,175),"Level %d"%character_level,24,GOLD)
 	text(Vector2(300,175),"XP %d / %d"%[experience,xp_required(character_level)],22)
-	text(Vector2(158,210),"Embers %d / Bank %d"%[shards,bank],18)
-	stat_ui.icon("iron",Vector2(500,190),24)
-	text(Vector2(532,210),"Iron %d / Fragments %d"%[iron,iron_fragments],18)
+	text(Vector2(158,210),"Run embers %d / Banked %d"%[shards,bank],18)
+	if run_rules>=20:
+		text(Vector2(500,210),"Cargo:",18)
+		smithy.draw_materials(smithy.material_entries({"ore":smithy.cargo().ore,"monster":smithy.cargo().monster,"boss":smithy.cargo().boss}),Vector2(570,192),145,18)
+		var special=smithy.material_entries({"alloy":smithy.cargo().alloy,"essence":smithy.cargo().essence,"relic":smithy.cargo().relic})
+		if not special.is_empty():smithy.draw_materials(special,Vector2(665,225),145,18)
+	else:
+		stat_ui.icon("iron",Vector2(500,190),24)
+		text(Vector2(532,210),"Iron %d / Fragments %d"%[iron,iron_fragments],18)
 	stat_ui.icon("crit_chance",Vector2(158,226),24);text(Vector2(193,247),"%.0f%%"%(crit_chance*100),22)
 	stat_ui.icon("crit_mult",Vector2(285,226),24);text(Vector2(320,247),"%.0f%%"%(crit_mult*100),22)
 	ui_icon("hammer",Vector2(470,226),24);text(Vector2(505,247),"yes" if breaker else "no",20)
 	ui_icon("boots",Vector2(600,226),24);text(Vector2(635,247),"yes" if boots else "no",20)
 	button(Rect2(158,264,630,42),"Your build / totals and effects","build_open")
+	button(Rect2(820,264,300,30),"Permanent progress","journal_permanent")
+	var goal=smithy.goal_info(true) if run_rules>=20 else {}
+	if not goal.is_empty():
+		text(Vector2(158,615),"TRACKING: "+goal.title+" / "+("Completed" if goal.finished else "Ready at the Smithy" if goal.ready else "Find blueprint and materials" if goal.get("blueprint_missing",false) else "Materials needed"),17,TEAL)
+		if not goal.finished and not goal.ready:smithy.draw_materials(goal.entries,Vector2(158,621),195,18)
+		if not goal.sources.is_empty():
+			journal_source_page=posmod(journal_source_page,goal.sources.size())
+			draw_wrapped("Find: "+goal.sources[journal_source_page],Vector2(158,662),650,15,INK,1)
+			if goal.sources.size()>1:button(Rect2(870,640,190,30),"Source %d/%d"%[journal_source_page+1,goal.sources.size()],"journal_goal_source")
 	text(Vector2(158,310),"Copper key: %s / Second Wind: %d / Recall: %d"%["held" if floor_keys.has("copper") else "none",revives_left,recall_charges],18,TEAL)
 	button(Rect2(820,300,300,40),"Recall to entrance","recall",false,recall_charges>0)
 	text(Vector2(158,358),"RELICS",18,GOLD)
-	var description="Hover a relic for its effect."
-	for i in range(relics.size()):
-		var at=Vector2(158+(i%3)*320,383+(i/3)*27)
-		text(at,RELICS[relics[i]][0],16)
-		if Rect2(at-Vector2(0,20),Vector2(300,28)).has_point(design_mouse()):description=relic_description(relics[i])
+	var description=relic_description(journal_relic) if journal_relic in relics else "Select a skill for its effect."
+	var pages=maxi(1,ceili(float(relics.size())/9.0));journal_page=clampi(journal_page,0,pages-1)
+	for i in range(mini(9,relics.size()-journal_page*9)):
+		var id=relics[journal_page*9+i];var at=Vector2(158+(i%3)*320,368+int(i/3)*31)
+		button(Rect2(at,Vector2(300,29)),"","journal_relic:"+id,journal_relic==id)
+		ui_icon(replay.relic_icon(id),at+Vector2(4,3),22);text(at+Vector2(31,21),RELICS[id][0],16)
+		if not menu_keyboard and Rect2(at,Vector2(300,29)).has_point(design_mouse()):description=relic_description(id)
+	if pages>1:
+		button(Rect2(158,466,50,29),"<","journal_prev",false,journal_page>0)
+		text(Vector2(220,487),"%d / %d"%[journal_page+1,pages],16,TEAL)
+		button(Rect2(300,466,50,29),">","journal_next",false,journal_page<pages-1)
 	draw_wrapped(description,Vector2(158,508),900,16,TEAL,2)
 	if run_rules>=5:
-		replay.draw_bounties()
 		front_end.icon_button(Rect2(158,680,300,48),"book","Chronicle","codex")
 		front_end.icon_button(Rect2(478,680,300,48),"attack","Last fight recap","recap_open")
+		front_end.icon_button(Rect2(798,680,300,48),"vault","Bounties","journal_bounties")
 		return
 	text(Vector2(158,558),"RECENT EVENTS",18,GOLD)
 	if run_rules>=4:draw_wrapped(tactics.FLOORS[posmod(floor_number-1,5)][1],Vector2(158,537),900,15,TEAL,1)

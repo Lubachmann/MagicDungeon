@@ -39,13 +39,13 @@ func draw() -> void:
  if not active() or g.mode not in ["play","inspect","fight"]:return
  var step=int(g.run_metrics.guide_step)
  var instructions=[
-  "The Hearth is fading. Use arrows or WASD; open the chest and equip its weapon.",
+  "The Hearth is fading. You start equipped with a sword; move with arrows or WASD.",
   "Hover over an enemy to inspect it. On keyboard, press I and move the cursor.",
   "Compare its HP, attack, armor and attack interval with yours. Step into it to fight.",
   "Combat is automatic. Watch both HP bars. Press H to use a flask if needed.",
   "Find and pick up the healing flask in this room. Press H to heal when hurt."]
  if step==0 and g.inventory.any(func(item):return item.get("slot","")=="weapon"):
-  instructions[0]="Press %s to open Equipment, then select and equip your weapon."%(g.controls.label("inventory") if g.controls else "E")
+  instructions[0]="Press %s to inspect your equipped weapon."%(g.controls.label("inventory") if g.controls else "E")
  g.panel(Rect2(15,505,295,192),Color("23353b"));g.text(Vector2(30,536),"FIRST STEPS  %d / 5"%[step+1],21,g.GOLD)
  g.draw_wrapped(instructions[clampi(step,0,4)],Vector2(30,568),260,19,g.INK,4)
  g.button(Rect2(30,650,260,37),"Skip tutorial (F1)","guide_skip")

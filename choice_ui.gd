@@ -6,7 +6,7 @@ var preview_index=-1
 var preview_stamp=0
 const SHORT={"critical_horizon":"+15% Crit limit","unbound_aim":"+15% Crit limit","precision":"+20% Crit chance","needle":"Ignore 60% armor","bloom":"+4 HP / victory","spark":"+75% opening damage","leech":"+2 HP / 3 hits","ward":"−50% opening damage","cinder":"+1 Fire stack","frost":"+1 Ice stack","solvent":"+1 Acid stack","venom":"+1 Poison stack","shatter":"+1 Ice stack","bulwark":"+1 Acid stack","contagion":"+1 Poison stack","steamglass":"+1 Fire · +1 Ice","corrosive_flame":"+1 Fire · +1 Acid","black_ice":"+1 Ice · +1 Poison","toxic_spark":"+1 Poison · +1 Fire"}
 const NEW_HEADLINES={"quickdraw":"Attack instantly at fight start","heavy_momentum":"+45% heavy hit / −20% speed","combustion":"4 Heat: Fire burst","toxic_harvest":"Poison bursts ×2","exposed_core":"+25% after armor break","glacial_crusher":"+30% vs slowed","venom_edge":"+25% vs poisoned","caustic_burn":"Burns: +25% damage","frozen_precision":"Crits: +20% damage","blood_harvest":"+50% vampirism healing","shieldbreaker":"+25% vs armor","warded_blade":"+25% while shielded","ashen_charge":"+20% vs burning","toxic_glacier":"Poison adds Frost","breakthrough":"+75% after a break","frost_shatter":"+50% for 3 Frost"}
-const NEW_NOTES={"quickdraw":"Then use normal interval","heavy_momentum":"Axe / greatblade","combustion":"Heavy weapon + 4 Fire","toxic_harvest":"4 Poison power","exposed_core":"4 Acid power","glacial_crusher":"Axe / greatblade + Frost","venom_edge":"Dagger + Poison","caustic_burn":"Fire + Acid","frozen_precision":"Critical hits + Frost","blood_harvest":"Vampirism + Poison","shieldbreaker":"Axe / greatblade","warded_blade":"Sword + shield","ashen_charge":"Fire + weapon hits","toxic_glacier":"Frost + Poison","breakthrough":"Axe / greatblade + defense break","frost_shatter":"Axe / greatblade + Frost"}
+const NEW_NOTES={"quickdraw":"Then use normal interval","heavy_momentum":"Axe / greatblade","combustion":"Heavy weapon + 4 Fire","toxic_harvest":"4 Poison power","exposed_core":"4 Acid power","glacial_crusher":"Axe / greatblade + Frost","venom_edge":"Dagger + Poison","caustic_burn":"Fire + Acid","frozen_precision":"Critical hits + Frost","blood_harvest":"Vampirism + Poison","shieldbreaker":"Axe / greatblade","warded_blade":"Sword + shield","ashen_charge":"Fire + weapon hits","toxic_glacier":"Poison triggers Frost","breakthrough":"Axe / greatblade + defense break","frost_shatter":"Axe / greatblade + Frost"}
 const STACKS={"wildfire":["fire"],"cinder":["fire"],"frost":["ice"],"shatter":["ice"],"solvent":["acid"],"bulwark":["acid"],"venom":["poison"],"contagion":["poison"],"steamglass":["fire","ice"],"corrosive_flame":["fire","acid"],"black_ice":["ice","poison"],"toxic_spark":["poison","fire"]}
 const BONUS={"wildfire":"Burning kills explode","precision":"Max 60% Crit chance","ruin":"Max 300% of normal damage","cinder":"Every 3rd burn: +50% damage","frost":"+20% vs chilled foes","solvent":"3 armor stripped / hit","venom":"Poison before combat","shatter":"3rd ice hit delays the enemy","bulwark":"Shield when armor breaks","contagion":"Next enemy: 10% less damage","steamglass":"Stronger critical hits","corrosive_flame":"Burns strip armor","black_ice":"Ice + poison: +2 shield / 3 hits","toxic_spark":"Poison + fire restore HP"}
 func _init(game):g=game;comparison=preload("res://upgrade_compare.gd").new(game)
@@ -60,7 +60,7 @@ func level_cards() -> void:
 	if not level_ready():
 		g.text(Vector2(550,475),"Enter to continue",18,g.INK)
 		return
-	g.text(Vector2(507,175),"LEVEL %d  /  CHOOSE ONE"%g.reward_level,20,g.TEAL)
+	g.text(Vector2(507,175),"LEVEL %d  /  CHOOSE ONE  /  THIS RUN"%g.reward_level,20,g.TEAL)
 	var options=g.choices
 	var stamp=hash([options,g.reward_level])
 	if stamp!=preview_stamp:preview_stamp=stamp;preview_index=-1
@@ -76,7 +76,8 @@ func level_cards() -> void:
 		if not g.menu_keyboard and rect.has_point(mouse):hovered=i
 		g.ui_icon(g.replay.relic_icon(id),at+Vector2(15,20),48,g.GOLD)
 		g.text(at+Vector2(78,33),g.RELICS[id][0],23,g.GOLD)
-		g.draw_wrapped(summary(id),at+Vector2(78,61),300,19,g.TEAL,1)
+		g.draw_wrapped(summary(id),at+Vector2(78,59),300,18,g.TEAL,1)
+		if NEW_NOTES.has(id):g.draw_wrapped(NEW_NOTES[id],at+Vector2(78,80),300,15,g.INK,1)
 		if rank!="Common":g.text(at+Vector2(375,30),rank.to_upper(),16,Color("85bcf2") if rank=="Rare" else Color("d7a4ff"))
 	g.front_end.icon_button(Rect2(245,625,465,50),"relic","Reroll / %d"%g.rerolls_left,"relic_reroll",false,g.rerolls_left>0 and can_reroll())
 	g.button(Rect2(710,625,400,50),"Your full build","build_open")
@@ -86,6 +87,7 @@ func level_cards() -> void:
 		preview_index=int(suffix) if focused.begins_with("relic") and suffix.is_valid_int() and int(suffix)<options.size() else -1
 	elif hovered>=0:preview_index=hovered
 	elif not Rect2(710,205,400,390).has_point(mouse):preview_index=-1
+	if preview_index<0 and not options.is_empty():preview_index=0
 	if preview_index>=0 and preview_index<options.size():comparison.draw_side(options[preview_index],Rect2(710,205,400,390))
 
 func legacy_cards(blessing: bool=false) -> void:

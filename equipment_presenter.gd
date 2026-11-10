@@ -21,6 +21,13 @@ static func keys(before: Dictionary,after: Dictionary) -> Array:
 		if key=="item_interval" and is_equal_approx(float(before.get("item_interval",0)),float(before.get("base_interval",0))) and is_equal_approx(float(after.get("item_interval",0)),float(after.get("base_interval",0))):continue
 		if before.has(key) or after.has(key):result.append(key)
 	return result
+# Put differences first so the defining properties are never hidden by common stats.
+static func comparison_keys(before: Dictionary,after: Dictionary) -> Array:
+	var rows=keys(before,after);var changed=[];var unchanged=[]
+	for key in rows:
+		if not is_equal_approx(float(before.get(key,0)),float(after.get(key,0))):changed.append(key)
+		else:unchanged.append(key)
+	return changed+unchanged
 static func affected(before_item: Dictionary,after_item: Dictionary) -> Array:
 	var rows=keys(numbers(before_item),numbers(after_item));var result=[]
 	var mapping={"impact_power":"attack","impact_rate":"interval","fire_power":"fire","frost_apply":"ice","acid_apply":"acid","poison_apply":"poison","base_interval":"interval","item_interval":"interval","power":"attack","health":"max_hp","speed":"interval","fire_dps":"fire","ice_slow":"ice","acid_strip":"acid","poison_weak":"poison","evade":"evade"}

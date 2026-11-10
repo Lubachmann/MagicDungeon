@@ -93,7 +93,7 @@ func back() -> void:
 		"profiles":
 			if g.profiles.pending_delete>=0:g.action("profile_delete_cancel")
 			else:g.mode="title"
-		"expedition":g.mode="title"
+		"expedition":g.action("expedition_back")
 		"codex":g.action("codex_back")
 		"skills":g.action("skills_back")
 		"curse":g.mode="play"
@@ -101,13 +101,18 @@ func back() -> void:
 		"infuse":g.action("infuse_back")
 		"controls":capture="";g.mode="settings"
 		"credits":g.mode="settings"
-		"settings":g.mode=g.session.settings_from
+		"settings":
+			if g.front_end.display_pending:g.action("display_revert")
+			else:g.mode=g.session.settings_from
 		"tutorial":g.action("tutorial_skip")
 		"equipment":g.action("close_equipment")
 		"character":g.action("close_menu")
 		"decision":g.action("decision_leave")
 		"branch":g.action("branch_leave")
 		"sanctuary":g.action("sanctuary_back")
+		"smithy":g.action("smithy_back")
+		"loadout":g.action("loadout_back")
+		"extract":g.action("extract_cancel")
 		"discovery":g.action("discovery_continue")
 		"ending":pass
 		"build":g.action("build_close")
@@ -171,6 +176,11 @@ func handle(event: InputEvent) -> bool:
 		held_keys.erase(event.keycode)
 		return false
 	if event.echo:return true
+	if g.mode=="codex" and g.replay.codex_search_active:
+		if event.keycode in [KEY_ESCAPE,KEY_ENTER,KEY_KP_ENTER]:g.replay.codex_search_active=false
+		elif event.keycode==KEY_BACKSPACE:g.replay.codex_search=g.replay.codex_search.left(maxi(0,g.replay.codex_search.length()-1));g.replay.codex_list_page=0
+		elif event.unicode>=32 and g.replay.codex_search.length()<24:g.replay.codex_search+=char(event.unicode);g.replay.codex_list_page=0
+		return true
 	if capture=="" and event.keycode==KEY_F1 and g.guided and g.guided.active():g.action("guide_skip");return true
 	if capture=="" and g.mode=="play" and direction_for(event.keycode)!=Vector2i.ZERO:
 		held_keys.erase(event.keycode);held_keys.append(event.keycode);repeat_left=0.24

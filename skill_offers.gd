@@ -7,6 +7,32 @@ const SPECIALIZED=["combustion","toxic_harvest","exposed_core"]
 const NEW=["glacial_crusher","venom_edge","caustic_burn","frozen_precision","blood_harvest","shieldbreaker","warded_blade","ashen_charge","toxic_glacier"]
 static func rarity(id: String) -> String:
  return "Epic" if id in EPIC else "Rare" if id in RARE else "Common"
+# Offer eligibility deliberately permits future-facing choices. This describes what
+# the current build still needs, without hiding an offer or changing combat rules.
+static func build_requirements(g,id: String,totals: Dictionary) -> Array:
+ var requirements={
+  "heavy_momentum":["heavy"],"combustion":["heavy","fire4"],"toxic_harvest":["poison4"],"exposed_core":["acid4"],
+  "glacial_crusher":["heavy","ice"],"venom_edge":["dagger","poison"],"caustic_burn":["fire","acid"],
+  "frozen_precision":["ice"],"blood_harvest":["poison","vampirism"],"shieldbreaker":["heavy"],
+  "warded_blade":["sword"],"ashen_charge":["fire"],"toxic_glacier":["poison"],
+  "breakthrough":["heavy"],"frost_shatter":["heavy","ice"]}
+ if not requirements.has(id):return []
+ var idx=int(g.equipped.get("weapon",-1));var weapon=str(g.inventory[idx].get("archetype","unarmed")) if idx>=0 and idx<g.inventory.size() else "unarmed"
+ var e=totals.get("element_totals",{});var build=totals.get("build",{});var rules=preload("res://element_rules.gd");var missing=[]
+ for requirement in requirements[id]:
+  match requirement:
+   "heavy":if weapon not in ["axe","greatblade"]:missing.append("axe or greatblade")
+   "dagger":if weapon!="dagger":missing.append("dagger")
+   "sword":if weapon!="balanced":missing.append("sword")
+   "fire","ice","acid","poison":
+    if float(e.get(requirement,0))<=0:missing.append({"fire":"Fire","ice":"Frost","acid":"Acid","poison":"Poison"}[requirement])
+   "fire4","poison4","acid4":
+    var element=requirement.trim_suffix("4")
+    if rules.element_power(build,element)<4:missing.append("4 "+element.capitalize()+" power")
+   "vampirism":if float(totals.get("vampirism",0))<=0:missing.append("vampirism")
+ return missing
+static func has_build_requirement(id: String) -> bool:
+ return id in ["heavy_momentum","combustion","toxic_harvest","exposed_core","glacial_crusher","venom_edge","caustic_burn","frozen_precision","blood_harvest","shieldbreaker","warded_blade","ashen_charge","toxic_glacier","breakthrough","frost_shatter"]
 static func eligible(g,id: String,totals: Dictionary) -> bool:
  var weapon=str(totals.get("build",{}).get("weapon",""))
  # BuildStats derives the equipped archetype independently of the UI.

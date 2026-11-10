@@ -57,7 +57,7 @@ func valid(data: Dictionary) -> bool:
 	if not state.rooms is Dictionary or not state.inventory is Array or not state.equipped is Dictionary:return false
 	if state.rooms.size() not in [8,9] or (state.rooms.size()==9 and not state.rooms.has(Vector2i(-1,0))) or not state.rooms.has(state.room) or not state.pos is Vector2i:return false
 	if state.floor_number<1 or (state.floor_number>5 and state.run_settings.get("mode","")!="endless") or state.character_level<1:return false
-	if state.mode not in ["play","fight","bomb","inspect","character","equipment","loot","relic","upgrade","floor","tutorial","shrine","runes","vault_reward","infuse","curse","decision","branch","ending","discovery","imprint","forge","dead","won"]:return false
+	if state.mode not in ["play","fight","bomb","inspect","extract","character","equipment","loot","relic","upgrade","floor","tutorial","shrine","runes","vault_reward","infuse","curse","decision","branch","ending","discovery","imprint","forge","dead","won"]:return false
 	if state.mode=="decision" and state.rooms[state.room].entities.get(state.puzzle_tile,{}).get("kind","") not in ["provisions","build_cache","wardstone","boss_preparation","rarity_altar","salvage","rest_site"]:return false
 	if state.mode=="imprint" and state.rooms[state.room].entities.get(state.puzzle_tile,{}).get("kind","") not in ["runesmith","salvage"]:return false
 	if state.mode=="fight" and (state.battle.is_empty() or not state.fight.has("position")):return false
@@ -109,6 +109,7 @@ func has_run() -> bool:
 	return not cached.is_empty() and cached.state.mode not in ["dead","won"] and cached.state.hp>0
 func saved_mode() -> String:
 	if g.mode=="sanctuary":return g.sanctuary.return_mode
+	if g.mode=="smithy":return g.sanctuary.return_mode if g.smithy.return_mode=="sanctuary" else "title"
 	if g.mode=="build":return g.run_metrics.get("build_return","equipment")
 	if g.mode=="recap":return g.run_metrics.get("recap_return","dead")
 	if g.mode=="pause":return paused_from
@@ -121,7 +122,7 @@ func snapshot() -> Dictionary:
 	state.mode=saved_mode()
 	return {"version":VERSION,"state":state,"rng":g.rng.state,"saved_at":Time.get_datetime_string_from_system(),"ui":{"paused_from":paused_from,"settings_from":settings_from}}
 func checkpoint() -> bool:
-	if not enabled or not active or g.mode in ["title","confirm_new","skills","profiles","expedition","codex"]:return true
+	if not enabled or not active or g.mode in ["title","confirm_new","skills","profiles","expedition","loadout","codex"]:return true
 	var data=snapshot()
 	if not valid(data):error="Invalid run state; last good save retained.";return false
 	if not atomic_write(path(),data):return false

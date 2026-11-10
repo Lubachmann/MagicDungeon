@@ -26,6 +26,7 @@ func draw(enemy: Dictionary) -> void:
 	if g.mode=="bomb" and not g.valid_bomb_target(Vector2i(((g.design_mouse()-g.ORIGIN)/g.TILE).floor())):
 		g.text(Vector2(988,477),"BOMB OUT OF REACH",18,Color("d68b7e"));return
 	var p=estimate(enemy);g.text(Vector2(988,452),"Estimated risk",18)
-	var label={"Favorable":"SAFE","Dangerous":"RISKY","Deadly":"DEADLY"}.get(p.label,"RISKY")
-	g.text(Vector2(988,477),label,23,g.TEAL if label=="SAFE" else Color("e3ab83"))
-	g.text(Vector2(988,502),"Without using a flask",15,g.INK)
+	var label={"Favorable":"LOW RISK","Dangerous":"RISKY","Deadly":"DEADLY"}.get(p.label,"RISKY")
+	g.text(Vector2(988,477),label,23,g.TEAL if label=="LOW RISK" else Color("e3ab83"))
+	g.text(Vector2(988,502),"~%d–%d HP / no flask"%[p.low_loss,p.high_loss],15,g.INK)
+	g.stat_ui.register("health",Rect2(988,435,225,75),"Estimated risk","Seven simulated fights sample possible outcomes without using a flask. Actual damage and the outcome can vary.")

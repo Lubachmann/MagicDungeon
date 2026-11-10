@@ -190,10 +190,13 @@ func handle(id: String) -> bool:
 	if id.begins_with("vault_pick:") and g.mode=="vault_reward":
 		var index=int(id.get_slice(":",1));var vault=g.rooms[g.room].entities[g.puzzle_tile]
 		if not vault.solved or vault.used or index<0 or index>=3:return true
+		if g.run_rules>=20:
+			vault.used=true;g.log_line(g.smithy.reward(vault.rewards[index]));g.smithy.cargo().ore+=3 if g.ember_tree.rank("runic_sight")>0 else 0;g.shards+=6;g.summary.chests+=1;g.mode="play";g.sfx("pickup");return true
 		vault.used=true;g.inventory.append(vault.rewards[index].duplicate(true));g.last_loot_index=g.inventory.size()-1;g.last_chest_tier=1;g.shards+=6;g.summary.chests+=1;g.mode="loot";g.loot_window.start();g.sfx("pickup")
 		return true
 	return false
 func can_infuse(element: String="") -> bool:
+	if g.run_rules>=20:return false
 	if g.run_rules>=9 and g.near_forge() and g.selected_item>=0 and g.selected_item<g.inventory.size() and not g.floor_flags.get("free_imprint_used",false) and element in ["","fire","ice","acid","poison"]:return true
 	return g.ember_tree.rank("runeforge")>0 and g.near_forge() and g.iron>=1 and g.shards>=4 and g.selected_item>=0 and g.selected_item<g.inventory.size()
 func draw_puzzle() -> void:
@@ -221,8 +224,10 @@ func draw_rewards() -> void:
 		g.button(Rect2(at,Vector2(310,420)),"","vault_pick:%d"%i)
 		g.gear_icon(item.slot,at+Vector2(20,20),64,g.Gear.COLORS[item.rarity],item)
 		g.text(at+Vector2(18,125),item.name,23,g.GOLD)
-		g.text(at+Vector2(18,160),"%s / Level %d"%[g.Gear.RARITIES[item.rarity],item.level],20,g.TEAL)
-		preload("res://equipment_presenter.gd").draw_item(g,item,at+Vector2(18,210),265,190)
+		if g.run_rules>=20:g.text(at+Vector2(18,160),"Blueprint / returns to Hearth",19,g.TEAL)
+		else:
+			g.text(at+Vector2(18,160),"%s / Level %d"%[g.Gear.RARITIES[item.rarity],item.level],20,g.TEAL)
+			preload("res://equipment_presenter.gd").draw_item(g,item,at+Vector2(18,210),265,190)
 	g.button(Rect2(150,665,970,50),"Leave / choose later","runes_leave")
 func draw_infusions() -> void:
 	g.front_end.overlay(Rect2(180,60,920,740))

@@ -40,7 +40,9 @@ func content() -> Array:
 		"scrap":
 			var bonus=g.ember_tree.rank("salvage_master") if g.run_rules>=5 else 0
 			return ["SCRAP SPARE GEAR",[["salvage","Scrapping destroys the item and gives fragments. Equipped and protected gear is protected."],["relic","Common: 1 fragment / Rare: 2 / Very rare: 3."+(" Scrapper adds +%d per item."%bonus if bonus>0 else "")],["iron","3 fragments = 1 iron. Use 1 iron to raise an item's level by 1."],["hammer","At a forge only. Uses left this floor: %d / 3."%g.salvage_charges]]]
-		_:return ["EQUIPMENT HELP",[["armor","Equip gear in 5 slots. Compare shows your whole build before and after equipping."],["iron","1 iron raises an item's level by 1. This improves its stats."],["salvage","Protect prevents scrapping. Near a forge, use Upgrade, Imprint or Scrap in Equipment."],["health","Gear and iron last for this run. They are lost when you die."]]]
+		_:
+			if g.run_rules>=20:return ["EQUIPMENT HELP",[["armor","Choose crafted equipment at the Hearth smithy before an expedition. Your loadout stays fixed during the run."],["book","Find equipment blueprints and elemental rune blueprints in chests and side passages."],["iron","Collect ore, monster parts and Warden cores. You keep them when you return, even after death."],["fire","At the smithy, craft, upgrade and infuse your equipment for future expeditions."]]]
+			return ["EQUIPMENT HELP",[["armor","Equip gear in 5 slots. Compare shows your whole build before and after equipping."],["iron","1 iron raises an item's level by 1. This improves its stats."],["salvage","Protect prevents scrapping. Near a forge, use Upgrade, Imprint or Scrap in Equipment."],["health","Gear and iron last for this run. They are lost when you die."]]]
 func draw() -> void:
 	if topic=="":
 		if g.mode in ["play","fight","inspect","bomb"] and EMBERS.has_point(g.design_mouse()):

@@ -92,6 +92,10 @@ func touch(tile: Vector2i,e: Dictionary) -> bool:
 		if e.get("used",false):g.log_line("This rest site has already been used.")
 		else:g.puzzle_tile=tile;g.mode="decision"
 		return true
+	if e.kind in ["runesmith","rarity_altar"] and g.run_rules>=20:
+		if not e.get("used",false):e.used=true;g.smithy.cargo().ore+=3;g.log_line("Old forge: +3 ore for the Hearth.")
+		else:g.log_line("This forge has been searched.")
+		g.animate_move(tile);return true
 	if e.kind=="runesmith":
 		g.animate_move(tile)
 		e.kind="salvage";g.log_line("Forge nearby: press E to upgrade, imprint or scrap gear.")
@@ -111,7 +115,7 @@ func enemy_defeated(enemy: Dictionary) -> void:
 	var data=g.rooms.get(enemy.ward_reward_room,{})
 	if data.is_empty():return
 	var chest=data.entities.get(enemy.ward_chest,{})
-	if chest.has("ward_item"):chest.item=chest.ward_item.duplicate(true);chest["ward_won"]=true;record("guardian_powered");g.log_line("Powered guardian defeated: its chest now holds Very rare gear.")
+	if chest.has("ward_item"):chest.item=chest.ward_item.duplicate(true);chest["ward_won"]=true;record("guardian_powered");g.log_line("Powered guardian defeated: its chest now holds a blueprint and extra ore." if g.run_rules>=20 else "Powered guardian defeated: its chest now holds Very rare gear.")
 func handle(id: String) -> bool:
 	if g.mode!="decision":return false
 	var e=g.rooms[g.room].entities.get(g.puzzle_tile,{})
@@ -133,7 +137,9 @@ func handle(id: String) -> bool:
 				if boss.get("kind","")=="enemy" and boss.get("boss_kind","")!="":boss.armor=maxf(0,float(boss.armor)-4);boss.attack=maxf(1,float(boss.attack)-1);boss["preparation_weakened"]=true
 			g.log_line("Boss weakened: -4 armor and -1 attack.")
 		else:
-			g.iron+=1;g.potions+=1;g.log_line("Supplies collected: +1 iron and +1 flask.")
+			g.potions+=1
+			if g.run_rules>=20:g.smithy.cargo().ore+=1;g.log_line("Supplies collected: +1 ore and +1 flask.")
+			else:g.iron+=1;g.log_line("Supplies collected: +1 iron and +1 flask.")
 		g.rooms[g.room].entities.erase(g.puzzle_tile);g.mode="play";record(id);g.sfx("pickup");return true
 	if id=="ward_disable" and e.get("kind","")=="wardstone":
 		var guard=g.rooms[e.target_room].entities.get(e.guardian,{})
@@ -142,10 +148,15 @@ func handle(id: String) -> bool:
 		g.rooms[g.room].entities.erase(g.puzzle_tile);g.mode="play";g.sfx("break");g.log_line("Rune disabled. The guardian loses bonus healing, but the bonus reward is lost.");return true
 	if id=="provisions_buy" and e.get("kind","")=="provisions":
 		if not g.floor_keys.get("copper",false):g.log_line("The Copper key was already spent." if g.floor_flags.has("copper_spent") else "Find the Copper key first.");g.sfx("error");return true
-		g.floor_keys.erase("copper");g.floor_flags["copper_spent"]="supplies";g.potions+=1;g.iron+=1;g.rooms[g.room].entities.erase(g.puzzle_tile);g.mode="play";record("key_for_supplies");g.log_line("Copper key spent: +1 flask and +1 iron. The locked chest stays closed.");g.sfx("pickup");return true
+		g.floor_keys.erase("copper");g.floor_flags["copper_spent"]="supplies";g.potions+=1
+		if g.run_rules>=20:g.smithy.cargo().ore+=1
+		else:g.iron+=1
+		g.rooms[g.room].entities.erase(g.puzzle_tile);g.mode="play";record("key_for_supplies");g.log_line("Copper key spent: +1 flask and +1 "+("ore" if g.run_rules>=20 else "iron")+". The locked chest stays closed.");g.sfx("pickup");return true
 	if id.begins_with("cache_pick:") and e.get("kind","")=="build_cache":
 		var index=int(id.get_slice(":",1))
 		if index<0 or index>=e.items.size():return true
+		if g.run_rules>=20:
+			var reward=g.smithy.reward(e.items[index]);g.rooms[g.room].entities.erase(g.puzzle_tile);g.mode="play";g.log_line(reward);record("cache_"+str(index));g.sfx("relic");return true
 		g.inventory.append(e.items[index].duplicate(true));g.last_loot_index=g.inventory.size()-1;g.last_chest_tier=1;g.rooms[g.room].entities.erase(g.puzzle_tile);g.mode="loot";g.loot_window.start();record("cache_"+str(index));g.sfx("relic");return true
 	return false
 func draw() -> void:
@@ -153,7 +164,7 @@ func draw() -> void:
 	if e.kind=="wardstone":
 		g.ui_icon("brazier",Vector2(210,135),48);g.text(Vector2(280,176),"HEALING OR BETTER LOOT?",30,g.GOLD)
 		g.draw_wrapped("This rune heals the treasure guardian in room %s. Disable it to make that fight easier."%g.room_number(e.target_room),Vector2(210,250),850,24,g.INK,3)
-		g.draw_wrapped("Leave it active and beat the guardian to earn Very rare gear with +1 item level.",Vector2(210,370),850,24,g.GOLD,3)
+		g.draw_wrapped(("Leave it active and beat the guardian to earn a blueprint and 3 extra ore." if g.run_rules>=20 else "Leave it active and beat the guardian to earn Very rare gear with +1 item level."),Vector2(210,370),850,24,g.GOLD,3)
 		g.button(Rect2(210,510,850,80),"Disable healing / give up the bonus loot","ward_disable")
 	elif e.kind=="rest_site":
 		g.draw_rest_icon(Vector2(210,135),48);g.text(Vector2(280,176),"REST SITE",30,g.GOLD)
@@ -166,19 +177,21 @@ func draw() -> void:
 		g.ui_icon("brazier",Vector2(210,135),48);g.text(Vector2(280,176),"PREPARE FOR THE BOSS",30,g.GOLD)
 		g.draw_wrapped("Choose one way to prepare for the first-floor boss. You can return later before deciding.",Vector2(210,245),850,24,g.INK,3)
 		g.button(Rect2(210,345,850,75),"Weaken boss: -4 armor and -1 attack","prepare_weaken")
-		g.front_end.icon_button(Rect2(210,455,850,75),"iron","Take supplies: +1 iron and +1 flask","prepare_supply")
+		g.front_end.icon_button(Rect2(210,455,850,75),"iron",("Take supplies: +1 ore and +1 flask" if g.run_rules>=20 else "Take supplies: +1 iron and +1 flask"),"prepare_supply")
 	elif e.kind=="provisions":
 		g.ui_icon("key",Vector2(210,135),48);g.text(Vector2(280,176),"SUPPLIES OR TREASURE?",30,g.GOLD)
 		g.draw_wrapped("Spend this floor's Copper key here for supplies, or save it for the locked treasure chest. You cannot open both.",Vector2(210,240),850,23,g.INK,3)
 		g.ui_icon("potion",Vector2(290,355),64);g.text(Vector2(375,400),"1 healing flask",27,g.GOLD)
-		g.ui_icon("iron",Vector2(690,355),64);g.text(Vector2(775,400),"1 iron",27,g.GOLD)
+		g.ui_icon("iron",Vector2(690,355),64);g.text(Vector2(775,400),"1 ore" if g.run_rules>=20 else "1 iron",27,g.GOLD)
 		g.button(Rect2(210,510,850,80),"Spend Copper key" if g.floor_keys.get("copper",false) else ("Copper key already spent" if g.floor_flags.has("copper_spent") else "Find the Copper key first"),"provisions_buy")
 	else:
 		g.text(Vector2(210,164),"CHOOSE A STARTER WEAPON" if e.get("basic",false) else "CHOOSE YOUR BUILD REWARD",30,g.GOLD)
 		for i in range(e.items.size()):
 			var item=e.items[i];var width=280 if e.items.size()==3 else 410;var at=Vector2(210+i*(width+15),205);g.button(Rect2(at,Vector2(width,400)),"","cache_pick:"+str(i))
 			g.gear_icon(item.slot,at+Vector2(20,20),64,g.Gear.COLORS[item.rarity],item);g.text(at+Vector2(20,103),item.name,24,g.GOLD)
-			g.text(at+Vector2(20,140),"%s / Level %d"%[g.Gear.RARITIES[item.rarity],item.level],20,g.TEAL)
+			g.text(at+Vector2(20,140),"Blueprint" if g.run_rules>=20 else "%s / Level %d"%[g.Gear.RARITIES[item.rarity],item.level],20,g.TEAL)
+			if g.run_rules>=20:
+				g.text(at+Vector2(20,185),"Blueprint / returns to Hearth",18,g.TEAL);continue
 			var stats=g.choice_ui.display_stats(item);var y=185
 			for key in stats:
 				g.stat_ui.label("base_interval" if key=="speed" else key,at+Vector2(20,y),24);g.text(at+Vector2(50,y),g.stat_ui.short_name("base_interval" if key=="speed" else key),16,g.INK);g.text(at+Vector2(165,y),g.choice_ui.inline_stat(key,stats[key],item).trim_prefix("Every ") if key=="speed" else preload("res://equipment_presenter.gd").value(key,stats),22,g.INK);y+=29
@@ -195,9 +208,9 @@ func inspect(e: Dictionary) -> bool:
 	if e.kind not in ["wardstone","provisions","build_cache","boss_preparation","rest_site"]:return false
 	g.panel(Rect2(972,210,260,470))
 	g.text(Vector2(988,250),{"wardstone":"HEALING RUNE","provisions":"SUPPLY STASH","build_cache":"BUILD CACHE","boss_preparation":"BOSS PREPARATION","rest_site":"REST SITE"}[e.kind],22,g.GOLD)
-	var text="Step here to choose one item. Unchosen items are lost. Your weapon can be changed later."
+	var text="Choose one blueprint. Unchosen options are lost." if g.run_rules>=20 else "Step here to choose one item. Unchosen items are lost. Your weapon can be changed later."
 	if e.kind=="rest_site":text="Already used on this floor." if e.get("used",false) else "Choose one: restore 40% max HP, gain 1 flask, or gain 2 character power. Leave and return whenever you want."
-	if e.kind=="wardstone":text="Heals a guardian in room %s. Disable it, or defeat the powered guardian for Very rare gear and +1 item level."%g.room_number(e.target_room)
-	if e.kind=="boss_preparation":text="Choose to weaken the first-floor boss or take 1 iron and 1 flask."
-	if e.kind=="provisions":text="Trade the Copper key for 1 flask + 1 iron. This uses the same key as the locked chest."
+	if e.kind=="wardstone":text=("Heals a guardian in room %s. Disable it, or defeat the powered guardian for extra ore." if g.run_rules>=20 else "Heals a guardian in room %s. Disable it, or defeat the powered guardian for Very rare gear and +1 item level.")%g.room_number(e.target_room)
+	if e.kind=="boss_preparation":text="Choose to weaken the first-floor boss or take 1 "+("ore" if g.run_rules>=20 else "iron")+" and 1 flask."
+	if e.kind=="provisions":text="Trade the Copper key for 1 flask + 1 "+("ore" if g.run_rules>=20 else "iron")+". This uses the same key as the locked chest."
 	g.draw_wrapped(text,Vector2(988,300),225,20,g.INK,12);return true

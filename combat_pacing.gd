@@ -47,6 +47,8 @@ static func enemy(enemy: Dictionary,floor_number: int,depth: int,run_rules: int=
 			if enemy.get("boss_kind","")=="iron":enemy.armor+=3
 			if enemy.get("signature","")=="tide":enemy.speed*=1.10
 			enemy["regen"]=roundi(8+2*f)
+		# Ease the transition into floor two without flattening later floors.
+		if run_rules>=20 and floor_number==2:enemy.attack*=0.85
 		return
 	if run_rules>=15:
 		# Base strength rises continuously across floors; enemy type adds variety.

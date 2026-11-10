@@ -1,7 +1,7 @@
 extends RefCounted
 ## A single optional side wing per floor; its destination is chosen at the threshold.
 const ROOM=Vector2i(-1,0)
-const NAMES={"weapon":"Weapon armory","armor":"Armor armory","fire":"Fire chamber","ice":"Frost chamber","acid":"Acid chamber","poison":"Poison chamber","vault":"Dangerous vault","rest":"Restful passage"}
+const NAMES={"weapon":"Weapon armory","armor":"Armor armory","fire":"Fire chamber","ice":"Frost chamber","acid":"Acid chamber","poison":"Poison chamber","vault":"Dangerous vault","rest":"Restful passage","mine":"Guarded mine"}
 const AFFIX={"fire":"fire_dps","ice":"ice_slow","acid":"acid_strip","poison":"poison_weak"}
 var g
 func _init(game):g=game
@@ -26,7 +26,7 @@ func handle(id: String) -> bool:
   id="branch_choose:weapon"
  if not id.begins_with("branch_choose:"):return false
  var choice=id.get_slice(":",1)
- if not NAMES.has(choice):return true
+ if not NAMES.has(choice) or (choice=="mine" and g.run_rules<20):return true
  if choice=="weapon" and chosen_weapon=="" and g.sanctuary and g.sanctuary.active() and g.sanctuary.unlocked("smith"):
   g.floor_flags["branch_stage"]="weapons";return true
  if choice=="armor" and chosen_armor=="" and g.sanctuary and g.sanctuary.active() and g.sanctuary.unlocked("smith") and g.ember_tree.rank("tinkering")>0:
@@ -54,6 +54,10 @@ func create_room(choice: String,chosen_weapon: String="",chosen_armor: String=""
  enemy.name="Vault guardian" if choice=="vault" else "Passage guardian";enemy["gatekeeper"]=true
  if choice=="vault":enemy.hp=ceili(float(enemy.hp)*1.25);enemy.max=enemy.hp;enemy.attack=ceilf(float(enemy.attack)*1.15);enemy.elite=true
  data.entities[guard_at]=enemy;data.gate=guard_at
+ if choice=="mine":
+  data.entities[Vector2i(3,4)]={"kind":"ore_deposit"}
+  data.entities[Vector2i(3,6)]={"kind":"ore_deposit"}
+  return
  var chest_at=Vector2i(3,5);var tier=2 if choice=="vault" else 1
  var slot="weapon" if choice=="weapon" else ["armor","helmet","shield"][g.rng.randi_range(0,2)] if choice=="armor" else ""
  if chosen_armor!="":slot=chosen_armor
@@ -65,6 +69,7 @@ func create_room(choice: String,chosen_weapon: String="",chosen_armor: String=""
   item.rarity=1
   if item.affixes.is_empty():item.affixes.append(g.Gear.AFFIXES[g.rng.randi_range(0,g.Gear.AFFIXES.size()-1)])
  if AFFIX.has(choice):
+  if g.run_rules>=20:item["blueprint_element"]=choice
   item.rarity=maxi(1,int(item.rarity));var affix=AFFIX[choice]
   if affix not in item.affixes:
    if item.affixes.size()>=int(item.rarity):item.affixes[0]=affix
@@ -78,10 +83,12 @@ func draw() -> void:
  var stage=g.floor_flags.get("branch_stage","main")
  if stage=="main":
   g.draw_wrapped("Choose one for this floor. The other passages close; the main dungeon stays open.",Vector2(250,205),780,20,g.INK,2)
-  var offers=[["hammer","ARMORY","Fight for a weapon or armor you choose.","branch_armory"],["fire","ELEMENTAL CHAMBER","Fight for gear with an element you choose.","branch_elements"],["vault","DANGEROUS VAULT","A stronger guardian protects better treasure.","branch_choose:vault"],["potion","RESTFUL PASSAGE","No guardian. Rest, gain a flask or train." if g.run_rules>=18 else "No guardian. Find a flask and a rest site.","branch_choose:rest"]]
+  var offers=[["hammer","ARMORY","Fight for a weapon or armor blueprint.","branch_armory"],["fire","ELEMENTAL CHAMBER","Fight for an elemental blueprint.","branch_elements"],["vault","DANGEROUS VAULT","A stronger guardian protects rare blueprints.","branch_choose:vault"],["potion","RESTFUL PASSAGE","No guardian. Rest, gain a flask or train." if g.run_rules>=18 else "No guardian. Find a flask and a rest site.","branch_choose:rest"]]
+  if g.run_rules>=20:offers.append(["iron","GUARDED MINE","Fight a guardian to reach two ore deposits.","branch_choose:mine"])
+  var spacing=74 if offers.size()>4 else 92
   for i in range(offers.size()):
-   var at=Vector2(250,245+i*92);g.button(Rect2(at,Vector2(780,80)),"",offers[i][3]);g.ui_icon(offers[i][0],at+Vector2(14,15),44)
-   g.text(at+Vector2(75,31),offers[i][1],22,g.GOLD);g.text(at+Vector2(75,59),offers[i][2],18,g.INK)
+   var at=Vector2(250,245+i*spacing);g.button(Rect2(at,Vector2(780,68 if offers.size()>4 else 80)),"",offers[i][3]);g.ui_icon(offers[i][0],at+Vector2(14,10),40)
+   g.text(at+Vector2(75,28),offers[i][1],21,g.GOLD);g.text(at+Vector2(75,53),offers[i][2],17,g.INK)
  else:
   g.text(Vector2(250,215),"Choose a reward focus. A guardian protects the chest.",20,g.INK)
   var choices=["weapon","armor"] if stage=="armory" else (["balanced","dagger","axe","greatblade","ember"] if stage=="weapons" else (["shield","armor","helmet"] if stage=="armors" else ["fire","ice","acid","poison"]))

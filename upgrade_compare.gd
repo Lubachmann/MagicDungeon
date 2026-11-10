@@ -73,6 +73,11 @@ func draw_side(id: String,rect: Rect2) -> void:
 		var element=elements[0]
 		g.stat_ui.icon({"fire":"fire_power","ice":"ice","acid":"acid","poison":"poison"}[element],at+Vector2(20,145),24)
 		g.draw_wrapped(preload("res://element_rules.gd").brief(element,g.run_rules>=17),at+Vector2(52,164),rect.size.x-70,17,g.INK,2)
+	var offers=preload("res://skill_offers.gd")
+	if offers.has_build_requirement(id):
+		var missing=offers.build_requirements(g,id,old)
+		g.draw_wrapped("Needs: "+", ".join(missing) if not missing.is_empty() else "Build ready; trigger during combat",at+Vector2(20,198),rect.size.x-40,16,Color("e99f88") if not missing.is_empty() else g.TEAL,1)
+	else:g.text(at+Vector2(20,198),"See effect and trigger above",16,g.TEAL)
 	g.text(at+Vector2(20,220),"YOUR BUILD",20,g.GOLD)
 	g.text(at+Vector2(235,220),"NOW",16,g.INK);g.text(at+Vector2(310,220),"AFTER",16,g.TEAL)
 	var rows=[];var before=old.get("element_totals",old.elements);var after=next.get("element_totals",next.elements)
