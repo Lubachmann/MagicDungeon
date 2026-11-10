@@ -9,7 +9,7 @@ func check(ok: bool,message: String) -> void:
 func _initialize() -> void:call_deferred("run")
 func run() -> void:
 	g=load("res://main.tscn").instantiate();g.save_path="res://tests/.feedback011.json";root.add_child(g);await process_frame;g.session.enabled=false;g.set_process(false)
-	g.new_run(42)
+	preload("res://tools/historical_run.gd").start(g,42,18)
 	check(g.inventory.is_empty() and g.equipped.is_empty() and g.combat_build().weapon=="unarmed","A real new run has no starting weapon or sword passive")
 	check(g.attack==5,"Unarmed base attack is visible without hidden equipment")
 	check(g.session.valid(g.session.snapshot()),"Empty inventory saves correctly")

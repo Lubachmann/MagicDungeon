@@ -1,4 +1,5 @@
 extends SceneTree
+# Saved rules 18 contract; current expeditions are covered by the Hearth suites.
 const Offers=preload("res://skill_offers.gd")
 const Combat=preload("res://combat.gd")
 var failures=[]
@@ -11,7 +12,7 @@ func battle(relics: Array,weapon: String,extra: Dictionary={}) -> Dictionary:
  build.merge(extra,true)
  var s=Combat.begin(foe(),50,100,10.0,0,0.5,relics,build);s.e_time=100;return s
 func run() -> void:
- var g=load("res://main.tscn").instantiate();g.save_path="/private/tmp/magic-skill-tests";root.add_child(g);await process_frame;g.session.enabled=false;g.set_process(false);g.muted=true;g.skills={};g.new_run(72)
+ var g=load("res://main.tscn").instantiate();g.save_path="/private/tmp/magic-skill-tests";root.add_child(g);await process_frame;g.session.enabled=false;g.set_process(false);g.muted=true;g.skills={};preload("res://tools/historical_run.gd").start(g,72,18)
  check(g.run_rules==18,"New runs use new skill rules")
  g.inventory=[g.make_gear("weapon",1,0,[],"axe")];g.equipped={"weapon":0};g.base_elements.ice=1;g.base_elements.poison=1;g.base_elements.acid=1;g.base_elements.fire=1;g.recalculate_stats()
  g.reward_level=3;g.rng.seed=100
@@ -44,7 +45,7 @@ func run() -> void:
  check(hit.poison_tick and is_equal_approx(s.frost_counters,0.5),"Poison tick applies Frost")
  s=battle(["caustic_burn"],"unarmed",{"fire":1});s.acid_stacks=1;s.burns=[{"power":4.0,"until":10.0}];s.fire_time=1;s.fire_until=10;s.p_time=100;hit=Combat.step(s)
  check(hit.burn and is_equal_approx(hit.damage,5.0),"Acid improves burn damage")
- g.run_skills={};g.new_run(11);g.rooms[g.room].entities[g.pos]={"kind":"salvage"};g.inventory=[g.make_gear("weapon",1,0,[],"balanced"),g.make_gear("helmet",1,0,[],"")];g.equipped={"weapon":0};g.iron=3;g.mode="equipment";g.selected_item=0
+ g.run_skills={};preload("res://tools/historical_run.gd").start(g,11,18);g.rooms[g.room].entities[g.pos]={"kind":"salvage"};g.inventory=[g.make_gear("weapon",1,0,[],"balanced"),g.make_gear("helmet",1,0,[],"")];g.equipped={"weapon":0};g.iron=3;g.mode="equipment";g.selected_item=0
  g.queue_redraw();await process_frame;await process_frame
  var actions=[];for button in g.buttons:actions.append(button.id)
  check("iron_selected" in actions and "infuse_open" in actions and "help:scrap" in actions and "forge_open" not in actions,"All crafting options appear in equipment")

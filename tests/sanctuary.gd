@@ -26,7 +26,7 @@ func run():
  check(g.career.sanctuary.discoveries.has("smith") and g.career.sanctuary.discoveries.has("cartographer") and g.career.sanctuary.fragments.has("1"),"Death returns discoveries and boss fragments")
  var saved=g.replay.clean_career(JSON.parse_string(FileAccess.get_file_as_string(g.save_path)).career)
  check(saved.sanctuary.discoveries.has("fire") and saved.sanctuary.fragments.has("1"),"Permanent discoveries are saved with the character")
- g.new_run(45);g.reward_level=8
+ g.new_run(45);g.reward_level=8;g.inventory[g.equipped.weapon].archetype="axe";g.recalculate_stats()
  check(g.sanctuary.unlocked("smith") and g.sanctuary.unlocked("cartographer") and "combustion" in preload("res://skill_offers.gd").pool(g),"Returned discoveries unlock future runs")
  g.mode="branch";g.floor_flags.branch_stage="armory";g.action("branch_choose:weapon")
  check(g.mode=="branch" and g.floor_flags.branch_stage=="weapons","Mara lets the player choose a weapon type")

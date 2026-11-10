@@ -1,4 +1,5 @@
 extends SceneTree
+## Saved rules-18 equipment/forge contracts; current fixed loadouts have separate coverage.
 const Stats=preload("res://build_stats.gd")
 var g
 var checks=0
@@ -20,7 +21,7 @@ func _initialize() -> void:call_deferred("run")
 func run() -> void:
 	g=load("res://main.tscn").instantiate();g.save_path="res://tests/.agency010.json";root.add_child(g);await process_frame;g.session.enabled=false;g.set_process(false)
 	for seed_value in range(100):
-		g.new_run(seed_value);var caches=0;var tables=0
+		preload("res://tools/historical_run.gd").start(g,seed_value,18);var caches=0;var tables=0
 		for coord in g.rooms:
 			var seen=preload("res://room_detail.gd").unlocked(g.rooms[coord])
 			for tile in g.rooms[coord].entities:
@@ -31,7 +32,7 @@ func run() -> void:
 		for direction in [Vector2i.UP,Vector2i.DOWN,Vector2i.LEFT,Vector2i.RIGHT]:
 			if accessible.has(chest+direction):adjacent=true
 		check(caches==0 and tables==1 and data.entities[chest].item.slot=="weapon" and adjacent,"Random starter weapon chest is reachable, with one forge and no choice cache")
-	g.new_run(42)
+	preload("res://tools/historical_run.gd").start(g,42,18)
 	g.inventory=[g.make_gear("weapon",3,2,["fire_dps","vampirism"],"ember"),g.make_gear("amulet",4,2,["vampirism","crit_mult"]),g.make_gear("helmet",3,1,["vampirism"]),g.make_gear("weapon",2,1,["ice_slow"],"dagger")]
 	g.inventory[1]["amulet_focus"]="health"
 	g.equipped={"weapon":0,"amulet":1,"helmet":2};g.base_elements.fire=2;g.run_skills={"fire_mastery":2,"might":3};g.hp=25;g.recalculate_stats()
@@ -53,7 +54,7 @@ func run() -> void:
 	check(0 not in g.bonus_transfer.candidates(true) and 3 not in g.bonus_transfer.candidates(true),"Donor list excludes kept and equipped gear")
 	g.inventory_tools.filter_mode=0
 	# Controlled transfer: donor is before recipient in the array, recipient is equipped.
-	g.new_run(88);g.inventory=[g.make_gear("helmet",12,2,["vampirism","speed"]),g.make_gear("weapon",2,1,["fire_dps"]),g.make_gear("amulet",2,1,["health"])];g.equipped={"weapon":1,"amulet":2};g.iron=2;g.recalculate_stats()
+	preload("res://tools/historical_run.gd").start(g,88,18);g.inventory=[g.make_gear("helmet",12,2,["vampirism","speed"]),g.make_gear("weapon",2,1,["fire_dps"]),g.make_gear("amulet",2,1,["health"])];g.equipped={"weapon":1,"amulet":2};g.iron=2;g.recalculate_stats()
 	var location=[]
 	for coord in g.rooms:
 		for tile in g.rooms[coord].entities:
@@ -74,7 +75,7 @@ func run() -> void:
 	g.mode="equipment";g.inventory[0]["kept"]=true;g.selected_item=0;g.equipped.erase("weapon");var count=g.inventory.size();g.salvage_selected();check(g.inventory.size()==count,"Kept gear cannot be scrapped")
 	g.mode="equipment";g.action("build_open");check(g.session.saved_mode()=="equipment","Build detail save resumes underlying equipment screen");g.controls.back();check(g.mode=="equipment","Escape returns from build to equipment")
 	# Isolated recap attribution, including overkill and zero-damage guard hits.
-	g.new_run(99);g.fight=g.make_enemy(0,2);g.fight.hp=500;g.fight.max=500;g.fight.armor=20;g.fight["position"]=Vector2i(5,5)
+	preload("res://tools/historical_run.gd").start(g,99,18);g.fight=g.make_enemy(0,2);g.fight.hp=500;g.fight.max=500;g.fight.armor=20;g.fight["position"]=Vector2i(5,5)
 	g.battle=g.Combat.begin(g.fight,100,100,20,5,1,[],{"auto_flow":true,"fire":1,"vampirism":0.1});g.combat_review.begin()
 	for i in range(8):
 		var hit=g.Combat.step(g.battle);g.combat_review.event(hit)

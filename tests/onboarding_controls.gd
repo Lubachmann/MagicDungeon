@@ -49,7 +49,8 @@ func run():
  g.queue_redraw();await process_frame;await process_frame
  check(g.buttons.any(func(b):return b.id=="guide_skip"),"Tutorial prompt is visible with a skip action")
  var data=g.rooms[Vector2i.ZERO];check(g.equipped.has("weapon"),"Tutorial starts with an equipped starter weapon")
- g.guided.update();check(g.run_metrics.guide_step==1,"The starter weapon advances the guide to inspection")
+ g.guided.update();check(g.run_metrics.guide_step==0,"The guide waits for weapon inspection")
+ g.action("equipment");g.action("close_equipment");g.guided.update();check(g.run_metrics.guide_step==1,"Inspecting the weapon advances the guide to enemy inspection")
  var enemy_tile=Vector2i(-1,-1)
  for tile in data.entities:
   if data.entities[tile].kind=="enemy":enemy_tile=tile;break

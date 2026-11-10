@@ -10,7 +10,7 @@ func run():
  check(g.smithy.blueprint_count(p)==3 and g.smithy.blueprint_count(p,"weapon")==3,"Blueprint collection counts discovered recipes by slot")
  var presenter=load("res://equipment_presenter.gd")
  var normal=presenter.numbers(g.smithy.make_item("dagger",1));var keen=presenter.numbers(g.smithy.make_item("dagger_keen",1))
- check(is_equal_approx(float(keen.crit_chance)-float(normal.crit_chance),0.03),"Keen dagger grants 3 percentage points more crit chance")
+ check(is_equal_approx(float(keen.crit_chance)-float(normal.crit_chance),0.05),"Keen dagger grants 5 percentage points more crit chance")
  check(presenter.comparison_keys(normal,keen)[0]=="crit_chance","Keen difference is the first comparison row")
  g.mode="sanctuary";g.action("smithy_open");g.action("smithy_select:dagger_keen");g.queue_redraw();await process_frame
  g.action("smithy_runes:dagger_keen");g.queue_redraw();await process_frame

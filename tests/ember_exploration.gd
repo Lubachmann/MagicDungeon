@@ -10,7 +10,7 @@ func cleanup() -> void:
 	for suffix in ["",".tmp",".run",".run.bak",".run.tmp",".settings",".settings.bak",".settings.tmp"]:
 		if FileAccess.file_exists(PATH+suffix):DirAccess.remove_absolute(ProjectSettings.globalize_path(PATH+suffix))
 func make_game():
-	var node=load("res://main.gd").new();node.save_path=PATH;root.add_child(node);node.set_process(false);node.muted=true
+	var node=load("res://main.gd").new();node.save_path=PATH;root.add_child(node);preload("res://tools/historical_run.gd").start(node,1,6);node.set_process(false);node.muted=true
 	return node
 func locate(kind: String) -> Array:
 	for coord in game.rooms:
@@ -21,7 +21,7 @@ func _initialize():call_deferred("run")
 func run() -> void:
 	cleanup();game=make_game()
 	check(game.icons.speed.get_width()==16,"Attack timing has a genuine 16px icon")
-	check(game.hp==80 and game.attack==5 and game.armor==0 and game.crit_chance==0.05,"Unarmed starting baseline")
+	check(game.hp==48 and game.attack==9 and game.armor==1 and game.crit_chance==0.05,"Unarmed starting baseline")
 	check(game.loadout=="wanderer" and game.inventory.is_empty() and game.equipped.is_empty() and game.elements=={"fire":0,"ice":0,"acid":0,"poison":0},"No starting equipment, class or forced element")
 	game.session.enabled=true;game.session.preferences.tutorial_done=true;game.bank=50000;game.mode="skills"
 	check(not game.ember_tree.buy("runeforge") and game.bank==50000,"Cannot skip prerequisites")
@@ -149,13 +149,14 @@ func resolve_tick(delta: float) -> void:
 	game._process(delta)
 
 func classic_run(seed_value: int) -> void:
-	game.new_run(seed_value);preload("res://tools/test_equipment.gd").arm(game)
+	preload("res://tools/historical_run.gd").start(game,seed_value,6);preload("res://tools/test_equipment.gd").arm(game)
 	game.run_rules=3
 	game.recalculate_stats();game.hp=game.max_hp
 	game.generate_floor()
 
 func classic_start() -> bool:
 	var result=game.session.start_run()
+	game.inventory.clear();game.equipped.clear()
 	game.run_rules=3
 	game.recalculate_stats();game.hp=game.max_hp
 	game.generate_floor()

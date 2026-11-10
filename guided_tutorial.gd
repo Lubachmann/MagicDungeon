@@ -13,12 +13,13 @@ func start() -> void:
    break
 func finish(skipped:bool=false) -> void:
  g.run_metrics["guide_step"]=-1;g.career["guided_done"]=true
+ if skipped:preload("res://early_journey.gd").progress(g).skipped=true
  g.save_progress()
  g.log_line("Tutorial skipped. Open Guide from the menu any time." if skipped else "Tutorial complete! Your flask is ready with H.")
 func update() -> void:
  if not active():return
  var step=int(g.run_metrics.guide_step)
- if step==0 and g.equipped.has("weapon"):
+ if step==0 and g.equipped.has("weapon") and (g.run_rules<20 or preload("res://early_journey.gd").progress(g).inspected):
   g.run_metrics.guide_step=1
   step=1
  if step==1 and g.mode in ["play","inspect"]:
@@ -36,7 +37,7 @@ func potion_found() -> void:
  g.run_metrics["guide_flask_found"]=true
  if int(g.run_metrics.guide_step)==4:finish()
 func draw() -> void:
- if not active() or g.mode not in ["play","inspect","fight"]:return
+ if not active() or g.mode not in ["play","inspect"]:return
  var step=int(g.run_metrics.guide_step)
  var instructions=[
   "The Hearth is fading. You start equipped with a sword; move with arrows or WASD.",

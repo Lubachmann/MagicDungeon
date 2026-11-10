@@ -10,7 +10,7 @@ func run():
  check(not g.buttons.any(func(b):return str(b.id).begins_with("relic")),"Choices are hidden during the announcement")
  g.choice_ui.tick(0.5);check(not g.choice_ui.level_ready(),"The announcement remains visible before choices")
  g.choice_ui.tick(0.6);g.menu_keyboard=false;g.choice_ui.pointer=Vector2(100,100);g.queue_redraw();await process_frame;await process_frame
- check(g.choice_ui.level_ready() and g.choice_ui.preview_index==-1,"Details stay hidden until a choice is hovered")
+ check(g.choice_ui.level_ready() and g.choice_ui.preview_index==0,"The first choice is previewed by default after the announcement")
  var cards=g.buttons.filter(func(b):return str(b.id).begins_with("relic") and str(b.id).trim_prefix("relic").is_valid_int())
  check(cards.size()>=3,"Level-up choices are available after the animation")
  if cards.size()>=3:

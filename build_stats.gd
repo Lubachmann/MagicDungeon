@@ -5,7 +5,7 @@ static func calculate(g,equipment: Variant=null,overrides: Dictionary={},upgrade
 	var bonus=g.bonus.duplicate();var relics=g.relics.duplicate();var base=g.base_elements.duplicate()
 	var gains=preload("res://combat_pacing.gd").gains(g)
 	var choice_id=str(upgrade.get("id",""))
-	if upgrade.get("blessing",false):
+	if upgrade.get("blessing",false) or (g.run_rules>=20 and g.UPGRADE_INFO.has(choice_id)):
 		if choice_id in base:base[choice_id]=mini(limit,base[choice_id]+1)
 		elif choice_id=="attack":bonus.attack+=gains.attack
 		elif choice_id=="guard":bonus.armor+=gains.guard;bonus.speed+=gains.tempo

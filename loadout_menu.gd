@@ -4,15 +4,18 @@ var g
 var slot="weapon"
 var selected=""
 var stats_page=0
+var item_page=0
+const PAGE_SIZE=24
 var filter_index=0
-const FILTERS=["All","Base","Keen","Swift","Bloodbound"]
+const FILTERS=["All","Base","Keen","Swift","Bloodbound","Special"]
 var back_mode="expedition"
 var demo=false
 var summary_open=false
 var summary_snapshot={}
 func _init(game):g=game
 func open(from: String,is_demo: bool=false) -> void:
- summary_open=false;back_mode=from;demo=is_demo;slot="weapon";selected="";stats_page=0;filter_index=0;g.mode="loadout";g.session.focused=0
+ g.replay.draft.mode="standard"
+ summary_open=false;back_mode=from;demo=is_demo;slot="weapon";selected="";stats_page=0;item_page=0;filter_index=0;g.mode="loadout";g.session.focused=0
 func is_daily() -> bool:return not demo and g.replay.draft.get("mode","")=="daily"
 func handle(id: String) -> bool:
  if g.mode!="loadout" or id=="smithy_open":return false
@@ -23,18 +26,21 @@ func handle(id: String) -> bool:
  if id=="loadout_back":g.mode=back_mode;return true
  if id.begins_with("loadout_slot:"):
   var s=id.trim_prefix("loadout_slot:")
-  if s in g.Gear.SLOTS:slot=s;selected="";stats_page=0
+  if s in g.Gear.SLOTS:slot=s;selected="";stats_page=0;item_page=0
   return true
  if id.begins_with("loadout_select:"):
   var key=id.trim_prefix("loadout_select:");var p=g.smithy.data()
   if not is_daily() and p.items.has(key) and g.smithy.RECIPES.has(key) and g.smithy.RECIPES[key][1]==slot:
    if selected!=key:stats_page=0
    selected=key
+   if slot=="weapon" and preload("res://early_journey.gd").enabled(g):preload("res://early_journey.gd").progress(g).inspected=true
    if p.unseen_items.has(key):
     p.unseen_items.erase(key)
     if not g.session.commit_profile():p.unseen_items[key]=true
   return true
- if id=="loadout_filter":filter_index=posmod(filter_index+1,FILTERS.size());selected="";stats_page=0;return true
+ if id=="loadout_filter":filter_index=posmod(filter_index+1,FILTERS.size());selected="";stats_page=0;item_page=0;return true
+ if id=="loadout_items_prev":item_page=maxi(0,item_page-1);return true
+ if id=="loadout_items_next":item_page=mini(maxi(0,ceili(float(filtered_ids().size())/PAGE_SIZE)-1),item_page+1);return true
  if id=="loadout_stats_prev":stats_page=maxi(0,stats_page-1);return true
  if id=="loadout_stats_next":stats_page+=1;return true
  if id=="loadout_equip":
@@ -55,6 +61,13 @@ func handle(id: String) -> bool:
   else:g.session.start_run(demo)
   return true
  return true
+func filtered_ids() -> Array:
+ var p=g.smithy.data();var ids=[];var family=FILTERS[filter_index]
+ for id in g.smithy.category_ids(slot):
+  var special=g.smithy.SPECIALS.has(id)
+  var matches=family=="All" or (family=="Base" and not g.smithy.VARIANTS.has(id) and not special) or (family=="Special" and special) or id.ends_with("_"+family.to_lower())
+  if p.items.has(id) and (not is_daily() or id=="sword") and (is_daily() or matches):ids.append(id)
+ return ids
 # Pure equipment-only summary: does not use the active run's stats or mutate it.
 func summary_data() -> Dictionary:
  var p=g.smithy.data();var loadout={"weapon":"sword"} if is_daily() else p.loadout;var items={};var totals={}
@@ -112,21 +125,21 @@ func draw() -> void:
  g.panel(Rect2(60,215,570,475));g.panel(Rect2(650,215,570,475))
  g.text(Vector2(80,248),"CRAFTED "+slot.to_upper(),20,g.GOLD)
  if not is_daily():g.button(Rect2(415,220,195,35),"Filter: "+FILTERS[filter_index],"loadout_filter")
- var ids=[]
- for id in g.smithy.category_ids(slot):
-  var family=FILTERS[filter_index]
-  var matches=family=="All" or family=="Base" and not g.smithy.VARIANTS.has(id) or id.ends_with("_"+family.to_lower())
-  if p.items.has(id) and (not is_daily() or id=="sword") and (is_daily() or matches):ids.append(id)
+ var ids=filtered_ids();var item_pages=maxi(1,ceili(float(ids.size())/PAGE_SIZE));item_page=clampi(item_page,0,item_pages-1)
  if ids.is_empty():
   g.draw_wrapped("No equipment crafted for this slot yet. Visit the Smithy to make some." if filter_index==0 else "No items match this filter.",Vector2(90,300),485,21,g.INK,4)
   if not is_daily():g.button(Rect2(90,365,300,52),"Open smithy","smithy_open")
  var inspected=selected
- for i in range(ids.size()):
-  var id=ids[i];var item=g.smithy.make_item(id,g.smithy.slot_level(id),str(p.infusions.get(id,"")));var at=Vector2(82+(i%6)*87,270+int(i/6)*92);var rect=Rect2(at,Vector2(76,76))
+ for i in range(mini(PAGE_SIZE,ids.size()-item_page*PAGE_SIZE)):
+  var id=ids[item_page*PAGE_SIZE+i];var item=g.smithy.make_item(id,g.smithy.slot_level(id),str(p.infusions.get(id,"")));var at=Vector2(82+(i%6)*87,270+int(i/6)*92);var rect=Rect2(at,Vector2(76,76))
   g.button(rect,"","loadout_select:"+id,selected==id or loadout.get(slot,"")==id,not is_daily())
   g.gear_icon(item.slot,at+Vector2(13,12),50,g.Gear.COLORS[item.rarity],item)
   if p.unseen_items.has(id):g.text(at+Vector2(8,70),"NEW",12,g.GOLD)
   if not g.menu_keyboard and rect.has_point(g.design_mouse()):inspected=id
+ if item_pages>1:
+  g.button(Rect2(82,640,120,38),"Previous","loadout_items_prev",false,item_page>0)
+  g.text(Vector2(248,667),"%d / %d"%[item_page+1,item_pages],18,g.TEAL)
+  g.button(Rect2(420,640,120,38),"Next","loadout_items_next",false,item_page<item_pages-1)
  if is_daily():inspected="sword"
  if inspected=="":inspected=str(loadout.get(slot,""))
  if g.smithy.RECIPES.has(inspected):

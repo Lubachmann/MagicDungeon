@@ -4,6 +4,7 @@ var g
 var hovered_ability=""
 func _init(game):g=game
 func draw(id: String,blessing: bool) -> void:
+	blessing=blessing or (g.run_rules>=20 and g.UPGRADE_INFO.has(id))
 	var old=Stats.calculate(g);var next=Stats.upgrade_preview(g,id,blessing)
 	g.panel(Rect2(840,150,380,520));g.text(Vector2(860,185),"YOUR BUILD / PREVIEW",23,g.GOLD)
 	g.text(Vector2(1005,220),"NOW",18);g.text(Vector2(1066,220),"GAIN",18);g.text(Vector2(1136,220),"AFTER",18,g.TEAL)
@@ -66,9 +67,9 @@ func difference(key: String,old: Dictionary,next: Dictionary) -> String:
 func draw_side(id: String,rect: Rect2) -> void:
 	var old=Stats.calculate(g);var next=Stats.upgrade_preview(g,id,false)
 	var at=rect.position
-	g.panel(rect);g.text(at+Vector2(20,32),g.RELICS[id][0],23,g.GOLD)
+	g.panel(rect);g.text(at+Vector2(20,32),g.relic_name(id),23,g.GOLD)
 	g.draw_wrapped(g.relic_description(id),at+Vector2(20,65),rect.size.x-40,19,g.INK,5)
-	var elements=g.choice_ui.STACKS.get(id,[])
+	var elements=[id] if id in ["fire","ice","acid","poison"] else g.choice_ui.STACKS.get(id,[])
 	if not elements.is_empty():
 		var element=elements[0]
 		g.stat_ui.icon({"fire":"fire_power","ice":"ice","acid":"acid","poison":"poison"}[element],at+Vector2(20,145),24)

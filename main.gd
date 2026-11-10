@@ -386,14 +386,16 @@ func new_run(seed_override: int = -1) -> void:
 	potions=1+ember_tree.rank("flask_reserve")
 	iron=ember_tree.rank("smithcraft")
 	iron+=ember_tree.rank("blastcraft")
-	if run_rules>=20:smithy.cargo().ore+=iron;iron=0
+	if run_rules>=20:iron=0
 	bombs=0
 	recalculate_stats()
 	hp = max_hp
 	generate_floor()
+	if playtest:playtest.begin_run()
 	if replay:replay.start_bounties()
 
 func generate_floor() -> void:
+	if run_rules>=20:floor_flags={}
 	rooms.clear()
 	visited.clear()
 	floor_drop_index = 0
@@ -437,6 +439,7 @@ func generate_floor() -> void:
 	mode = "play"
 	if run_rules>=4:log_line(tactics.FLOORS[posmod(floor_number-1,5)][1])
 	log_line("Floor %d/%d: defeat the Warden, then use the stairs."%[floor_number,FLOOR_COUNT])
+	if playtest:playtest.floor_entered()
 	queue_redraw()
 
 
@@ -491,7 +494,7 @@ func make_room(coord: Vector2i) -> void:
 			entities[room_spot(bounds, walls, entities, reserved)] = make_enemy(theme_enemy_type(), depth)
 	else: entities[Vector2i(7,5)] = make_enemy(0,0)
 	if roles[coord] in ["Elite", "Armory"]: entities[room_spot(bounds, walls, entities, reserved)] = {"kind":"ore_deposit" if run_rules>=20 else "iron"}
-	if roles[coord] == "Armory": entities[room_spot(bounds,walls,entities,reserved)] = {"kind":"ore_deposit" if run_rules>=20 else "iron"}
+	if run_rules>=20 and roles[coord] == "Armory": entities[room_spot(bounds,walls,entities,reserved)] = {"kind":"ore_deposit" if run_rules>=20 else "iron"}
 	if guarded:
 		var guard = make_enemy(1 if roles[coord] == "Elite" else rng.randi_range(0,2), depth, mini(6,depth+2) if run_rules>=15 else -1)
 		guard.name = "Vault champion" if roles[coord]=="Elite" else "Passage sentinel"
@@ -586,6 +589,9 @@ func make_enemy(type: int, depth: int, forced_tier: int=-1) -> Dictionary:
 	if replay:replay.modify_enemy(enemy,depth)
 	if run_rules>=10 and run_rules<15 and type==3 and floor_number==1:
 		enemy.hp=ceili(float(enemy.hp)*0.85);enemy.max=enemy.hp;enemy.attack=maxf(1,float(enemy.attack)-1)
+	if run_rules>=20 and floor_flags.get("prepared_floor",-1)==floor_number:
+		enemy["floor_prepared"]=tactics.rule()
+		if tactics.rule()=="keep" and type==3:enemy.armor=maxf(0,float(enemy.armor)-4);enemy.attack=maxf(1,float(enemy.attack)-1)
 	if type==3:enemy.name=preload("res://enemy_roster.gd").title(enemy)
 	return enemy
 
@@ -676,7 +682,7 @@ func legacy_input(event: InputEvent) -> void:
 		if event.keycode == KEY_3: action("upgrade2")
 		return
 	if mode in ["dead", "won"]:
-		if event.keycode == KEY_ENTER: action("restart")
+		if event.keycode == KEY_ENTER: action("sanctuary")
 		return
 	if mode != "play": return
 	if movement and movement.is_running(): return
@@ -751,6 +757,8 @@ func game_move_player(direction: Vector2i) -> void:
 				fight["position"] = target
 				battle = Combat.begin(fight, hp, max_hp, attack, armor, speed, relics, combat_build())
 				if combat_review:combat_review.begin()
+				if playtest:playtest.fight_started()
+				if feedback:feedback.clear()
 				toxic_echo=0.0
 				clock = -0.15
 				mode = "fight"
@@ -801,6 +809,9 @@ func game_move_player(direction: Vector2i) -> void:
 				else:log_line("The old urn crumbles.")
 			"ore_deposit":
 				var mined=2+floor_number+ember_tree.rank("salvage_master")
+				if run_rules>=20 and not run_metrics.get("mining_bonus_claimed",false):
+					mined+=ember_tree.rank("smithcraft")+ember_tree.rank("blastcraft")
+					run_metrics["mining_bonus_claimed"]=true
 				if smithy:smithy.cargo().ore+=mined
 				sfx("pickup");log_line("Mined %d ore for the Hearth."%mined)
 			"potion":
@@ -850,7 +861,7 @@ func _process(delta: float) -> void:
 		if flashes[tile] <= 0: flashes.erase(tile)
 	if mode == "fight":
 		battle.waiting=false
-		if not feedback or feedback.hitstop<=0:clock += delta * (1.0 if run_rules>=7 else 1.25 if run_rules>=4 else 2.0)
+		if not feedback or feedback.hitstop<=0:clock += combat_clock_delta(delta)
 		while not battle.done and not battle.get("waiting",false) and Combat.next_time(battle) <= clock and (not feedback or feedback.hitstop<=0):
 			var hit = Combat.step(battle)
 			if int(battle.hp)>=int(battle.max_hp):battle["life_fraction"]=0.0
@@ -881,13 +892,15 @@ func _process(delta: float) -> void:
 			fight.hp = battle.enemy.hp
 			var target = fight.position if hit.player else pos
 			flashes[target] = 0.09
-			motes.append({"at": ORIGIN + Vector2(target) * TILE + Vector2(-3, -10), "value": feedback.damage_text(hit) if feedback else "−%.1f"%hit.damage, "ttl": 0.95, "size":feedback.number_size(hit) if feedback else 21,"color": Color("96cc79") if hit.get("poison_tick",false) else Color("eea36c") if hit.burn else GOLD if hit.player else Color("f28d86")})
+			if feedback:feedback.trim_numbers()
+			motes.append({"ordinary":true,"at": ORIGIN + Vector2(target) * TILE + Vector2(-3, -10), "value": feedback.damage_text(hit) if feedback else "−%.1f"%hit.damage, "ttl": 0.95, "size":feedback.number_size(hit) if feedback else 21,"color": Color("96cc79") if hit.get("poison_tick",false) else Color("eea36c") if hit.burn else GOLD if hit.player else Color("f28d86")})
 			if hit.heal > 0:
 				motes.append({"at": ORIGIN + Vector2(pos) * TILE, "value": ("VAMP +%d" % hit.heal if int(hit.get("vamp_heal",0))==int(hit.heal) else "+%d" % hit.heal), "ttl": 0.8, "color": Color("dc7b90") if int(hit.get("vamp_heal",0))>0 else TEAL})
 			if hit.phase: log_line("Warden enraged: +25%% attack; interval %.2fs → %.2fs."%[choice_ui.interval(Combat.enemy_speed(battle)/1.25),choice_ui.interval(Combat.enemy_speed(battle))])
 			if not feedback:sfx("block" if hit.damage == 0 else ("swing" if hit.player else "hurt"))
 			log_line("%s: %.1f damage%s" % ["Poison" if hit.get("poison_tick",false) else "Burn" if hit.burn else ("Critical strike" if hit.crit else ("Your strike" if hit.player else fight.name)), hit.damage, " / +%d HP" % hit.heal if hit.heal > 0 else ""])
 		if battle.done:
+			if playtest:playtest.fight_finished()
 			if battle.won:
 				if tactics:tactics.victory(fight,fight.position)
 				defeat_enemy(fight.position, fight)
@@ -899,6 +912,11 @@ func _process(delta: float) -> void:
 				finish_run(false)
 	queue_redraw()
 
+func combat_clock_delta(delta: float) -> float:
+	# Playback speed never enters the combat formulas or private RNG.
+	if float(battle.get("hp",hp))<=float(battle.get("max_hp",max_hp))*0.35: battle["playback_rate"]=1
+	return delta*float(battle.get("playback_rate",1))*(1.0 if run_rules>=7 else 1.25 if run_rules>=4 else 2.0)
+
 func forecast(enemy: Dictionary) -> Dictionary:
 	if mode == "bomb":
 		var preview = enemy.duplicate(true)
@@ -908,20 +926,29 @@ func forecast(enemy: Dictionary) -> Dictionary:
 	var state = battle if mode == "fight" else Combat.begin(enemy, hp, max_hp, attack, armor, speed, relics, combat_build())
 	return Combat.predict(state)
 
+func safe_return_bonus() -> int:
+	if run_rules<20 or demo_run or run_settings.get("mode","")=="daily" or int(run_metrics.get("bosses",0))<1:return 0
+	return maxi(1,floori(replay.bank_reward(shards)*0.10))
+
 func finish_run(won: bool) -> void:
 	end_loot_page=0
 	if mode in ["dead", "won"]: return
 	if sanctuary:sanctuary.commit()
 	if smithy and run_rules>=20:smithy.commit()
+	var returned=bool(run_metrics.get("extracted",false))
+	if won and not demo_run:shards+=10
+	var return_bonus=safe_return_bonus() if won or returned else 0
+	run_metrics["return_bonus"]=return_bonus
 	if replay:replay.record(won)
 	mode = "won" if won else "dead"
-	sfx("victory" if won else "death")
-	if won and not demo_run: shards += 10
-	bank += replay.bank_reward(shards) if replay else shards
+	sfx("victory" if won else "return_home" if returned else "death")
+	bank += (replay.bank_reward(shards) if replay else shards)+return_bonus
+	if return_bonus>0:log_line("Safe return bonus: +%d banked embers."%return_bonus)
 	if session:session.checkpoint()
 	save_progress()
 
 func action(id: String) -> void:
+	if preload("res://early_journey.gd").handle(self,id):queue_redraw();return
 	if loadout_menu and loadout_menu.handle(id):queue_redraw();return
 	if smithy and smithy.handle(id):queue_redraw();return
 	if sanctuary and sanctuary.handle(id):
@@ -1008,6 +1035,7 @@ func game_action(id: String) -> void:
 	if id.begins_with("relic") and mode == "relic":
 		var index = int(id.right(1))
 		if index >= 0 and index < choices.size():
+			if playtest:playtest.selected(choices[index])
 			grant_relic(choices[index])
 			resume_play()
 	elif id == "heal" and mode in ["play","fight"]:
@@ -1117,6 +1145,7 @@ func _draw() -> void:
 	elif mode=="extract":
 		front_end.overlay(Rect2(315,260,650,260));text(Vector2(350,315),"LEAVE THE EXPEDITION?",27,GOLD)
 		draw_wrapped("Keep all blueprints and materials. Your run levels and skills reset.",Vector2(350,358),570,20,INK,2)
+		text(Vector2(350,414),"Safe return bonus: +%d embers"%safe_return_bonus() if safe_return_bonus()>0 else "Defeat a Warden to earn a safe return bonus.",18,TEAL)
 		button(Rect2(350,430,265,55),"Return home","extract_confirm");button(Rect2(645,430,265,55),"Keep exploring","extract_cancel")
 	elif mode=="ending":sanctuary.draw_ending()
 	elif mode=="discovery":sanctuary.draw_discovery()
@@ -1148,6 +1177,7 @@ func _draw() -> void:
 		button(Rect2(340,738,260,66),"Return to Hearth","extract_prompt")
 	if smithy:smithy.draw_notice()
 	if guided:guided.draw()
+	preload("res://early_journey.gd").draw(self)
 	if mastery and mode not in ["relic","upgrade"]:mastery.draw_notice()
 	if feedback:feedback.draw_ui()
 	if stat_ui:stat_ui.draw_notice()
@@ -1356,7 +1386,7 @@ func draw_upgrade() -> void:
 func draw_end() -> void:
 	front_end.menu_backdrop();panel(Rect2(160,55,960,730))
 	text(Vector2(210,125),"RETURNED TO THE HEARTH" if run_metrics.get("extracted",false) else "THE FLAME ENDURES" if mode=="won" and sanctuary and sanctuary.active() else "ASCENDED" if mode=="won" else "FALLEN",42,GOLD)
-	var values=[str(floor_number),str(kills),"%dm %02ds"%[int(summary.time/60),int(summary.time)%60],str(replay.bank_reward(shards))]
+	var values=[str(floor_number),str(kills),"%dm %02ds"%[int(summary.time/60),int(summary.time)%60],str(replay.bank_reward(shards)+int(run_metrics.get("return_bonus",0)))]
 	for i in range(4):
 		var at=Vector2(210+i*220,170);panel(Rect2(at,Vector2(200,105)))
 		ui_icon(["map","attack","speed","ember"][i],at+Vector2(12,12),32)
@@ -1367,6 +1397,7 @@ func draw_end() -> void:
 		ui_icon(replay.relic_icon(relics[i]),at,48)
 		if Rect2(at,Vector2(48,48)).has_point(design_mouse()):draw_wrapped(RELICS[relics[i]][0],Vector2(210,480),850,22,GOLD,1)
 	if death_reason!="":draw_wrapped(death_reason,Vector2(210,480),850,18,Color("e1a18e"),1)
+	elif int(run_metrics.get("return_bonus",0))>0:text(Vector2(210,480),"Includes +%d safe return embers"%int(run_metrics.return_bonus),18,TEAL)
 	if run_rules>=20 and smithy:
 		var cargo=smithy.cargo();var retained=not demo_run and run_settings.get("mode","")!="daily"
 		text(Vector2(210,512),"RETURNED DISCOVERIES" if retained else "DAILY / PRACTICE MATERIALS AND BLUEPRINTS ARE NOT SAVED",18,GOLD)
@@ -1400,9 +1431,9 @@ func draw_end() -> void:
 		elif not goal.is_empty():text(Vector2(210,620),"Goal: "+goal.title+" / "+("Completed" if goal.finished else "Ready to craft" if goal.ready else "More to find"),17,TEAL)
 		else:text(Vector2(210,620),"Blueprints, materials and banked embers are kept.",17,TEAL)
 	else:text(Vector2(210,592),"Bank %d / Seed %d / %d dodges"%[bank,run_seed,summary.get("evades",0)],18,TEAL)
-	front_end.icon_button(Rect2(210,635,410,65),"hammer","Smithy","smithy_open")
-	front_end.icon_button(Rect2(650,635,420,65),"attack","Again","restart")
-	front_end.icon_button(Rect2(210,720,235,44),"ember","Hearth","sanctuary")
+	front_end.icon_button(Rect2(210,635,410,65),"ember","Continue at Hearth","sanctuary")
+	front_end.icon_button(Rect2(650,635,420,65),"hammer","Smithy","smithy_open")
+	front_end.icon_button(Rect2(210,720,235,44),"attack","New expedition","restart")
 	front_end.icon_button(Rect2(465,720,285,44),"attack","Fight recap","recap_open")
 	front_end.icon_button(Rect2(770,720,300,44),"book","Your build","build_open")
 func generate_links() -> void:
@@ -1492,6 +1523,8 @@ func animate_move(target: Vector2i) -> void:
 func relic_pool() -> Array:
 	if run_rules>=11:return preload("res://skill_offers.gd").pool(self)
 	var pool=RELICS.keys()
+	if run_rules<18:
+		for id in ["heavy_momentum","quickdraw"]:pool.erase(id)
 	for id in preload("res://skill_offers.gd").NEW:pool.erase(id)
 	for id in preload("res://skill_offers.gd").HEAVY_NEW:pool.erase(id)
 	for id in preload("res://skill_offers.gd").SPECIALIZED:pool.erase(id)
@@ -1509,6 +1542,7 @@ func offer_relic(exclude: Array=[]) -> void:
 	var fresh=mode!="relic"
 	if run_rules>=11:
 		choices=preload("res://skill_offers.gd").choose(self,exclude)
+		if playtest:playtest.offer(choices)
 		if choices.is_empty():shards+=4;mode="play";log_line("All available upgrades owned. Received 4 embers instead.")
 		else:
 			mode="relic"
@@ -1540,7 +1574,14 @@ func offer_relic(exclude: Array=[]) -> void:
 		mode = "relic"
 		if fresh and choice_ui:choice_ui.start_level()
 
+func relic_name(id: String) -> String:
+	if id=="attack":return "Attack training"
+	if UPGRADE_INFO.has(id):return "Frost infusion" if id=="ice" else str(UPGRADE_INFO[id][0])
+	return str(RELICS[id][0])
+
 func relic_description(id: String) -> String:
+	if UPGRADE_INFO.has(id):
+		return {"attack":"+3 character attack. Your weapon scales this hit power.","guard":"+2 armor and +6% attack speed.","fire":"+1 Fire potency.","ice":"+1 Frost power.","acid":"+1 Acid power.","poison":"+1 Poison power.","focus":"+6% critical chance, up to your current limit.","ferocity":"+20% critical hit damage, up to your current limit."}[id]+" Repeatable; lasts this expedition."
 	if run_rules>=18 and id=="haste":return "Attack interval −0.15s, to a minimum of 0.3s. This benefits faster weapons most."
 	if run_rules>=18 and id=="heavy_momentum":return "Axe or greatblade: +45% physical damage and −20% attack speed. Other weapons gain nothing."
 	if run_rules>=18 and id=="toxic_harvest":return "Requires 4 Poison power. Poison bursts deal double damage."
@@ -1708,6 +1749,7 @@ func defeat_enemy(tile: Vector2i, enemy: Dictionary) -> void:
 		if enemy.type==1 and floor_number>=2:c.alloy+=1
 		elif enemy.type==2 and floor_number>=3:c.essence+=1
 		elif enemy.type==0 and floor_number>=4:c.relic+=1
+	preload("res://early_journey.gd").first_victory(self)
 	var reward = 12 if enemy.type == 3 else (6 if enemy.elite else 2)
 	if enemy.get("room_extra",false):reward=maxi(1,reward/2)
 	shards += reward
@@ -1759,6 +1801,8 @@ func resume_play() -> void:
 		if mode == "relic": return
 
 func grant_relic(id: String) -> void:
+	if run_rules>=20 and id in preload("res://skill_offers.gd").TRAINING:
+		apply_blessing(id);log_line("Level-up training: "+relic_name(id));sfx("blessing");return
 	if id in relics: return
 	relics.append(id)
 	recalculate_stats()
@@ -1792,6 +1836,7 @@ func recalculate_stats() -> void:
 	hp=mini(hp,max_hp)
 
 func open_equipment() -> void:
+	if preload("res://early_journey.gd").enabled(self) and equipped.has("weapon"):preload("res://early_journey.gd").progress(self).inspected=true
 	mode="equipment"
 	if build_view:build_view.equipment_details=false
 	if selected_item < 0 or selected_item >= inventory.size():selected_item=0 if not inventory.is_empty() else -1
@@ -2367,6 +2412,8 @@ func draw_context() -> void:
 		draw_wrapped("Restores up to %d HP once."%roundi((30+3*ember_tree.rank("wellkeeper"))*(0.75 if replay.vow("famine")>0 else 1.0)) if kind=="fountain" else ("Ore for the Hearth smithy. Keep it after returning." if run_rules>=20 else "Upgrade any owned item by one level."),Vector2(988,300),225,18)
 
 func enemy_explanation(enemy: Dictionary) -> String:
+	var prepared=Combat.Flow.prepared_description(enemy)
+	if prepared!="":return prepared
 	if enemy.get("ward_active",false):return ("Rune in room %s: heals %d HP, 3 times. Disable it, or win powered for extra ore." if run_rules>=20 else "Rune in room %s: heals %d HP, 3 times. Disable it, or win powered for Very rare gear.")%[room_number(enemy.ward_source),enemy.regen]
 	if enemy.get("family","") in Combat.Flow.FAMILIES:return Combat.Flow.FAMILIES[enemy.family].desc
 	if enemy.get("signature","") in Combat.Flow.BOSSES:
@@ -2414,7 +2461,7 @@ func draw_map_popup() -> void:
 		var features=map_features(coord)
 		text(at+Vector2(8,61)," ".join(features),12,TEAL)
 	text(Vector2(802,402),"F: fountain I: iron S: forge G: guard",13)
-	text(Vector2(802,425),"Rest: site / K: key / P: supplies" if run_rules>=15 else "K: key / P: supplies / H: healing rune",13)
+	text(Vector2(802,425),"Rest: site / K: key / P: supplies / Prep: tactics" if run_rules>=15 else "K: key / P: supplies / H: healing rune",13)
 	text(Vector2(802,448),("Candles: Sun %s > Moon %s"%["lit" if floor_flags.get("sun",false) else "dark","lit" if floor_flags.get("moon",false) else "dark"]) if run_rules<4 or "seal" in floor_flags.get("encounters",[]) else "No candle seal on this floor",13)
 	text(Vector2(802,471),"Side passage: "+branch_paths.NAMES.get(floor_flags.get("branch_choice",""),"choose at entrance") if branch_paths and branch_paths.available() else "C: crack W: water T1-3: chest tier",13)
 	text(Vector2(802,494),"Blue: flooded / Key: "+("Copper" if floor_keys.has("copper") else "none"),13)
@@ -2429,6 +2476,7 @@ func map_features(coord: Vector2i) -> Array[String]:
 			if entity.style=="water" and not boots:result.append("W")
 		elif entity.kind=="wardstone":result.append("H")
 		elif entity.kind=="provisions":result.append("P")
+		elif entity.kind=="boss_preparation":result.append("Prep")
 		elif entity.kind=="build_cache":result.append("C+")
 		elif entity.kind=="rest_site" and not entity.get("used",false):result.append("Rest")
 		elif entity.kind=="fountain":result.append("F")

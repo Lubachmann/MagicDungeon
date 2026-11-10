@@ -53,6 +53,7 @@ func create_room(choice: String,chosen_weapon: String="",chosen_armor: String=""
  var guard_at=Vector2i(7,5);var enemy=g.make_enemy(g.theme_enemy_type(),2,mini(6,3+(1 if choice=="vault" else 0)))
  enemy.name="Vault guardian" if choice=="vault" else "Passage guardian";enemy["gatekeeper"]=true
  if choice=="vault":enemy.hp=ceili(float(enemy.hp)*1.25);enemy.max=enemy.hp;enemy.attack=ceilf(float(enemy.attack)*1.15);enemy.elite=true
+ if g.run_rules>=20 and choice in AFFIX:enemy["passage_blessing"]=choice
  data.entities[guard_at]=enemy;data.gate=guard_at
  if choice=="mine":
   data.entities[Vector2i(3,4)]={"kind":"ore_deposit"}

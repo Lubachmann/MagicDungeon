@@ -1,4 +1,5 @@
 extends SceneTree
+# Saved rules 19 contract; current expeditions are covered by the Hearth suites.
 var checks=0
 var failures=[]
 func check(ok:bool,message:String):
@@ -6,7 +7,7 @@ func check(ok:bool,message:String):
  if not ok and failures.size()<25:failures.append(message)
 func _initialize():call_deferred("run")
 func run():
- var g=load("res://main.tscn").instantiate();g.save_path="/private/tmp/magic-enemy-curve";root.add_child(g);await process_frame;g.session.enabled=false;g.set_process(false);g.muted=true;g.skills={};g.new_run(42)
+ var g=load("res://main.tscn").instantiate();g.save_path="/private/tmp/magic-enemy-curve";root.add_child(g);await process_frame;g.session.enabled=false;g.set_process(false);g.muted=true;g.skills={};preload("res://tools/historical_run.gd").start(g,42,19)
  check(g.run_rules==19,"New runs use updated scaling")
  g.run_rules=17 # The exact quadratic assertions below cover saved rules 17.
  var rows=[]
@@ -32,7 +33,7 @@ func run():
  var legacy=g.make_enemy(0,1,6);var old_boss=g.make_enemy(3,4)
  check(legacy.hp==558 and legacy.attack==47 and is_equal_approx(legacy.armor,11.6),"Previous saved runs retain their ordinary enemy curve")
  check(old_boss.hp==900 and old_boss.attack==41,"Previous saved runs retain their boss curve")
- g.new_run(71);g.session.enabled=true;g.session.active=true
+ preload("res://tools/historical_run.gd").start(g,71,19);g.session.enabled=true;g.session.active=true
  check(g.session.checkpoint() and g.session.continue_run() and g.run_rules==19,"Updated rules survive save and continue")
  g.session.enabled=false
  for suffix in [".run",".run.bak",".run.tmp"]:DirAccess.remove_absolute(g.save_path+suffix)

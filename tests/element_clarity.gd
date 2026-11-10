@@ -15,9 +15,9 @@ func run() -> void:
  for id in g.choice_ui.STACKS:
   var sentence=g.relic_description(id)
   check(g.font.get_string_size(sentence,HORIZONTAL_ALIGNMENT_LEFT,-1,g.readable_size(18)).x<=1120,"Upgrade effect fits on its line: "+id)
- g.mode="relic";g.choices=["black_ice","venom","cinder"];g.menu_keyboard=false;g.choice_ui.pointer=Vector2(500,250);g.queue_redraw();await process_frame;await process_frame
+ g.mode="relic";g.choices=["black_ice","venom","cinder"];g.menu_keyboard=false;g.choice_ui.pointer=Vector2(500,350);g.queue_redraw();await process_frame;await process_frame
  check(g.choice_ui.preview_index==1,"Mouse hover selects second upgrade")
- g.choice_ui.pointer=Vector2(650,680);g.queue_redraw();await process_frame;await process_frame
+ g.choice_ui.pointer=Vector2(900,400);g.queue_redraw();await process_frame;await process_frame
  check(g.choice_ui.preview_index==1,"Moving to element help keeps the selected upgrade")
  print(JSON.stringify({"failures":failures}))
  g.free();quit(0 if failures.is_empty() else 1)

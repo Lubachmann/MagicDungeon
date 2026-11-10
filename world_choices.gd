@@ -30,7 +30,7 @@ func generate() -> void:
 		var placed=false
 		while not candidates.is_empty():
 			var coord=candidates.pop_at(g.rng.randi_range(0,candidates.size()-1))
-			if g.dungeon_threads.place(coord,{"kind":"rest_site","used":false}).x>=0:
+			if g.dungeon_threads.place(coord,expedition_site()).x>=0:
 				g.floor_flags["rest_room"]=coord;placed=true;break
 		assert(placed,"No reachable rest site location")
 	var supply_room=Vector2i.ZERO
@@ -51,7 +51,7 @@ func generate() -> void:
 				if rank==0:item["plain"]=true
 				items.append(item)
 		place_foundation({"kind":"build_cache","items":items,"basic":true})
-	if g.floor_number==1 and g.run_rules>=9:
+	if g.run_rules>=20 or (g.floor_number==1 and g.run_rules>=9):
 		var distances=g.dungeon_threads.distances_from(Vector2i.ZERO);var candidates=[]
 		for coord in distances:
 			if coord not in [Vector2i.ZERO,g.boss_room]:candidates.append(coord)
@@ -72,6 +72,14 @@ func generate() -> void:
 		for coord in g.roles:
 			if coord not in [Vector2i.ZERO,g.boss_room]:
 				if g.dungeon_threads.place(coord,{"kind":"build_cache","items":items}).x>=0:break
+func expedition_site() -> Dictionary:
+	var site={"kind":"rest_site","used":false}
+	if g.run_rules<20:return site
+	var offers=preload("res://skill_offers.gd");var pool=offers.pool(g)
+	site["expedition_reward"]=true
+	site["reward_skill"]=pool[g.rng.randi_range(0,pool.size()-1)] if not pool.is_empty() else "attack"
+	site["reward_element"]=g.tactics.preparation().element
+	return site
 func place_foundation(entity: Dictionary) -> Vector2i:
 	# Always reachable from the spawn before fighting, opening chests or finding traversal tools.
 	var data=g.rooms[Vector2i.ZERO];var start=Vector2i(2,5);var seen={start:true};var queue=[start];var spots=[]
@@ -111,6 +119,10 @@ func record(choice: String) -> void:
 	if not g.run_metrics.has("decisions"):g.run_metrics["decisions"]=[]
 	if g.run_metrics.decisions.size()<32:g.run_metrics.decisions.append({"floor":g.floor_number,"choice":choice})
 func enemy_defeated(enemy: Dictionary) -> void:
+	var element=str(enemy.get("passage_blessing",""))
+	if g.run_rules>=20 and element in ["fire","ice","acid","poison"] and not g.floor_flags.get("passage_blessing_claimed",false):
+		g.floor_flags["passage_blessing_claimed"]=true;g.apply_blessing(element)
+		g.log_line("Passage guardian defeated: +1 "+element.capitalize()+" power for this expedition.")
 	if not enemy.get("ward_active",false):return
 	var data=g.rooms.get(enemy.ward_reward_room,{})
 	if data.is_empty():return
@@ -119,6 +131,16 @@ func enemy_defeated(enemy: Dictionary) -> void:
 func handle(id: String) -> bool:
 	if g.mode!="decision":return false
 	var e=g.rooms[g.room].entities.get(g.puzzle_tile,{})
+	if e.get("expedition_reward",false) and id in ["expedition_skill","expedition_blessing"]:
+		if e.get("used",false):return true
+		e.used=true
+		if id=="expedition_skill":
+			var skill=str(e.reward_skill)
+			if skill in g.relics:skill="attack"
+			g.grant_relic(skill)
+		else:
+			g.apply_blessing(str(e.reward_element));g.log_line("Expedition blessing: +1 "+str(e.reward_element).capitalize()+" power.")
+		g.mode="play";record(id);g.sfx("blessing");return true
 	if id=="decision_leave":g.mode="equipment" if e.get("kind","")=="salvage" else "play";return true
 	if id in ["rest_heal","rest_flask","rest_train"] and e.get("kind","")=="rest_site":
 		if e.get("used",false):return true
@@ -132,7 +154,9 @@ func handle(id: String) -> bool:
 			g.bonus.attack+=2.0;g.recalculate_stats();g.log_line("Trained: +2 character power for this run.");g.sfx("relic")
 		e["used"]=true;g.mode="play";record(id);return true
 	if id in ["prepare_weaken","prepare_supply"] and e.get("kind","")=="boss_preparation":
-		if id=="prepare_weaken":
+		if id=="prepare_weaken" and g.run_rules>=20:
+			g.tactics.prepare_floor()
+		elif id=="prepare_weaken":
 			for boss in g.rooms[g.boss_room].entities.values():
 				if boss.get("kind","")=="enemy" and boss.get("boss_kind","")!="":boss.armor=maxf(0,float(boss.armor)-4);boss.attack=maxf(1,float(boss.attack)-1);boss["preparation_weakened"]=true
 			g.log_line("Boss weakened: -4 armor and -1 attack.")
@@ -161,6 +185,15 @@ func handle(id: String) -> bool:
 	return false
 func draw() -> void:
 	var e=g.rooms[g.room].entities[g.puzzle_tile];g.front_end.overlay(Rect2(170,95,940,650))
+	if e.get("expedition_reward",false):
+		g.text(Vector2(210,165),"EXPEDITION REWARD / CHOOSE ONE",28,g.GOLD)
+		g.draw_wrapped("Choose a skill, a blessing suited to this floor, or supplies. "+g.tactics.preparation().help,Vector2(210,210),850,18,g.INK,3)
+		var skill=str(e.reward_skill);var owned=skill in g.relics
+		g.front_end.icon_button(Rect2(210,275,850,68),g.replay.relic_icon(skill),"Skill: "+g.relic_name("attack" if owned else skill),"expedition_skill")
+		g.draw_wrapped(g.relic_description("attack" if owned else skill),Vector2(225,370),810,18,g.INK,3)
+		g.front_end.icon_button(Rect2(210,435,850,65),str(e.reward_element),"Blessing: +1 "+str(e.reward_element).capitalize()+" power","expedition_blessing")
+		g.front_end.icon_button(Rect2(210,520,850,65),"potion","Supplies: +1 healing flask","rest_flask")
+		g.button(Rect2(210,625,850,50),"Leave / choose later","decision_leave");return
 	if e.kind=="wardstone":
 		g.ui_icon("brazier",Vector2(210,135),48);g.text(Vector2(280,176),"HEALING OR BETTER LOOT?",30,g.GOLD)
 		g.draw_wrapped("This rune heals the treasure guardian in room %s. Disable it to make that fight easier."%g.room_number(e.target_room),Vector2(210,250),850,24,g.INK,3)
@@ -174,9 +207,9 @@ func draw() -> void:
 		g.front_end.icon_button(Rect2(210,395,850,72),"potion","PREPARE  /  +1 healing flask","rest_flask")
 		g.front_end.icon_button(Rect2(210,485,850,72),"stat_attack","TRAIN  /  +2 character power","rest_train")
 	elif e.kind=="boss_preparation":
-		g.ui_icon("brazier",Vector2(210,135),48);g.text(Vector2(280,176),"PREPARE FOR THE BOSS",30,g.GOLD)
-		g.draw_wrapped("Choose one way to prepare for the first-floor boss. You can return later before deciding.",Vector2(210,245),850,24,g.INK,3)
-		g.button(Rect2(210,345,850,75),"Weaken boss: -4 armor and -1 attack","prepare_weaken")
+		g.ui_icon("brazier",Vector2(210,135),48);g.text(Vector2(280,176),"PREPARE THIS FLOOR" if g.run_rules>=20 else "PREPARE FOR THE BOSS",30,g.GOLD)
+		g.draw_wrapped(g.tactics.preparation().help if g.run_rules>=20 else "Choose one way to prepare for the first-floor boss. You can return later before deciding.",Vector2(210,245),850,24,g.INK,3)
+		g.button(Rect2(210,345,850,75),g.tactics.preparation().label if g.run_rules>=20 else "Weaken boss: -4 armor and -1 attack","prepare_weaken")
 		g.front_end.icon_button(Rect2(210,455,850,75),"iron",("Take supplies: +1 ore and +1 flask" if g.run_rules>=20 else "Take supplies: +1 iron and +1 flask"),"prepare_supply")
 	elif e.kind=="provisions":
 		g.ui_icon("key",Vector2(210,135),48);g.text(Vector2(280,176),"SUPPLIES OR TREASURE?",30,g.GOLD)
@@ -209,8 +242,9 @@ func inspect(e: Dictionary) -> bool:
 	g.panel(Rect2(972,210,260,470))
 	g.text(Vector2(988,250),{"wardstone":"HEALING RUNE","provisions":"SUPPLY STASH","build_cache":"BUILD CACHE","boss_preparation":"BOSS PREPARATION","rest_site":"REST SITE"}[e.kind],22,g.GOLD)
 	var text="Choose one blueprint. Unchosen options are lost." if g.run_rules>=20 else "Step here to choose one item. Unchosen items are lost. Your weapon can be changed later."
-	if e.kind=="rest_site":text="Already used on this floor." if e.get("used",false) else "Choose one: restore 40% max HP, gain 1 flask, or gain 2 character power. Leave and return whenever you want."
+	if e.get("expedition_reward",false):text="Already claimed." if e.get("used",false) else "Choose a skill, +1 elemental power, or a healing flask. One reward for this expedition."
+	elif e.kind=="rest_site":text="Already used on this floor." if e.get("used",false) else "Choose one: restore 40% max HP, gain 1 flask, or gain 2 character power. Leave and return whenever you want."
 	if e.kind=="wardstone":text=("Heals a guardian in room %s. Disable it, or defeat the powered guardian for extra ore." if g.run_rules>=20 else "Heals a guardian in room %s. Disable it, or defeat the powered guardian for Very rare gear and +1 item level.")%g.room_number(e.target_room)
-	if e.kind=="boss_preparation":text="Choose to weaken the first-floor boss or take 1 "+("ore" if g.run_rules>=20 else "iron")+" and 1 flask."
+	if e.kind=="boss_preparation":text=g.tactics.preparation().help+" Or take supplies." if g.run_rules>=20 else "Weaken the first-floor boss or take 1 iron and 1 flask."
 	if e.kind=="provisions":text="Trade the Copper key for 1 flask + 1 "+("ore" if g.run_rules>=20 else "iron")+". This uses the same key as the locked chest."
 	g.draw_wrapped(text,Vector2(988,300),225,20,g.INK,12);return true

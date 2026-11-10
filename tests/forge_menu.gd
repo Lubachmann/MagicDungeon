@@ -6,7 +6,7 @@ func _initialize():call_deferred("run")
 func run():
  var g=load("res://main.tscn").instantiate();g.save_path="/private/tmp/magic-inline-forge";root.add_child(g);await process_frame;g.session.enabled=false;g.set_process(false);g.muted=true;g.skills={}
  for seed in range(30):
-  g.new_run(seed+700);var forges=[]
+  preload("res://tools/historical_run.gd").start(g,seed+700,18);var forges=[]
   for coord in g.rooms:
    for tile in g.rooms[coord].entities:
     if g.rooms[coord].entities[tile].kind=="salvage":forges.append([coord,tile])
@@ -30,7 +30,7 @@ func run():
   g.inventory[1]["kept"]=false;g.action("salvage_selected")
   check(g.inventory.size()==1 and g.iron_fragments==2 and g.salvage_charges==2,"Spare rare gear scraps to fragments")
  # Craft actions cannot be used remotely by calling them directly.
- g.new_run(900);g.inventory=[g.make_gear("weapon",1,0)];g.equipped={"weapon":0};g.selected_item=0;g.iron=4;g.mode="equipment";g.room=Vector2i.ZERO;g.pos=Vector2i(2,5)
+ preload("res://tools/historical_run.gd").start(g,900,18);g.inventory=[g.make_gear("weapon",1,0)];g.equipped={"weapon":0};g.selected_item=0;g.iron=4;g.mode="equipment";g.room=Vector2i.ZERO;g.pos=Vector2i(2,5)
  for tile in g.rooms[g.room].entities.keys():
   if g.rooms[g.room].entities[tile].kind=="salvage":g.rooms[g.room].entities.erase(tile)
  g.action("iron_selected");g.action("infuse_open")

@@ -66,8 +66,8 @@ func run() -> void:
 				g.room=coord;g.floor_keys={"copper":true};g.rooms[coord].entities.erase(e.guardian)
 				check(g.open_chest(tile) and not g.floor_keys.has("copper"),"Opening the treasure consumes the same key")
 				check(g.floor_flags.get("copper_spent","")=="treasure","The trade-off remembers which reward used the key")
-	g.replay.draft={"mode":"daily","vows":{}};g.career.mastery=g.mastery.empty_progress();g.new_run(1);preload("res://tools/test_equipment.gd").arm(g);var daily=var_to_bytes(g.rooms)
-	g.career.mastery={"vamp_healed":999,"greatblade_kills":999,"fire_bosses":999,"runes_solved":999};g.new_run(999);preload("res://tools/test_equipment.gd").arm(g)
+	g.replay.draft={"mode":"daily","vows":{}};g.career.mastery=g.mastery.empty_progress();preload("res://tools/historical_run.gd").start_mode(g,1,"daily",6);preload("res://tools/test_equipment.gd").arm(g);var daily=var_to_bytes(g.rooms)
+	g.career.mastery={"vamp_healed":999,"greatblade_kills":999,"fire_bosses":999,"runes_solved":999};preload("res://tools/historical_run.gd").start_mode(g,999,"daily",6);preload("res://tools/test_equipment.gd").arm(g)
 	check(var_to_bytes(g.rooms)==daily,"Daily generation is independent of earned build unlocks")
 	g.replay.draft={"mode":"standard","vows":{}};g.new_run(55);preload("res://tools/test_equipment.gd").arm(g)
 	g.session.enabled=false;g.career=g.replay.new_career();g.demo_run=false
@@ -93,7 +93,7 @@ func run() -> void:
 	check(g.fight_preview.estimate(enemy)==p,"Repeated inspection is stable")
 	g.mode="settings";g.session.preferences.exact_forecasts=true;g.action("exact_forecasts");check(not g.session.preferences.exact_forecasts,"Exact forecast action remains disabled")
 	g.session.active=true;check(g.playtest.export_report("res://tests/.depthreports"),"Playtest reports export locally")
-	var report=JSON.parse_string(FileAccess.get_file_as_string(g.playtest.last_path));check(report.build=="0.16.0" and report.active_run.has("equipment") and not report.has("character_name"),"Reports contain build decisions without character identity")
+	var report=JSON.parse_string(FileAccess.get_file_as_string(g.playtest.last_path));check(report.build==preload("res://playtest_report.gd").BUILD and report.report_schema==2 and report.active_run.has("equipment") and not report.has("character_name"),"Reports contain build decisions without character identity")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(g.playtest.last_path));DirAccess.remove_absolute(ProjectSettings.globalize_path("res://tests/.depthreports"))
 	g.session.enabled=true;g.session.active=true;g.mode="play";check(g.session.checkpoint() and g.session.continue_run() and g.mastery.unlocked("bloodletter"),"Achievement progress survives active-run save restoration")
 	g.mode="codex";g.replay.codex_page=3;g.queue_redraw();await process_frame;await process_frame
@@ -103,7 +103,7 @@ func run() -> void:
 	check(has_unlock_navigation,"Build unlock screen renders and remains navigable")
 	g.mode="play";g.room=Vector2i.ZERO;g.rooms[g.room].entities[Vector2i(3,5)]={"kind":"build_cache","items":[g.Gear.make("weapon",2,1,["fire_dps"],"ember"),g.Gear.make("amulet",2,1,["ice_slow"])]};g.puzzle_tile=Vector2i(3,5);g.mode="decision";g.queue_redraw();await process_frame;await process_frame
 	check(g.buttons.size()==3,"Build cache shows two rewards and a leave action")
-	g.mode="settings";g.queue_redraw();await process_frame;await process_frame
+	g.mode="settings";g.front_end.settings_group=2;g.queue_redraw();await process_frame;await process_frame
 	var settings_ids=[]
 	for b in g.buttons:settings_ids.append(b.id)
 	check("exact_forecasts" not in settings_ids and "export_playtest" in settings_ids,"Exact forecast toggle is absent and report controls remain")

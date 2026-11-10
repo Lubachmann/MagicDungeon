@@ -20,8 +20,8 @@ func run():
   if boss.is_empty():continue
   var armor=boss.armor;var attack=boss.attack;g.world_choices.handle("prepare_weaken")
   check(boss.armor==maxf(0,armor-4) and boss.attack==attack-1 and g.mode=="play","Preparation changes the actual boss once")
- g.new_run(900);g.room=Vector2i.ZERO;g.pos=Vector2i(2,5);g.mode="play";var tile=g.pos+Vector2i.RIGHT;g.rooms[g.room].walls.erase(tile);g.rooms[g.room].entities[tile]={"kind":"iron"};var iron=g.iron;g.game_move_player(Vector2i.RIGHT)
- check(g.mode=="play" and g.iron>iron and not g.rooms[g.room].entities.has(tile),"Iron is collected without opening equipment")
+ g.new_run(900);g.room=Vector2i.ZERO;g.pos=Vector2i(2,5);g.mode="play";var tile=g.pos+Vector2i.RIGHT;g.rooms[g.room].walls.erase(tile);g.rooms[g.room].entities[tile]={"kind":"iron"};var ore=g.smithy.cargo().ore;g.game_move_player(Vector2i.RIGHT)
+ check(g.mode=="play" and g.smithy.cargo().ore>ore and not g.rooms[g.room].entities.has(tile),"Ore is collected without opening equipment")
  g.pos=Vector2i(2,5);g.rooms[g.room].entities[tile]={"kind":"salvage"};g.game_move_player(Vector2i.RIGHT)
  check(g.mode=="play" and g.near_forge() and g.rooms[g.room].entities.has(tile),"Forge is walk-through and remains usable nearby")
  var base=g.make_gear("armor",2,0);var light=base.duplicate(true);light.armor_class="light";var heavy=base.duplicate(true);heavy.armor_class="heavy"

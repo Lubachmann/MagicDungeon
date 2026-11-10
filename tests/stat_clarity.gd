@@ -9,7 +9,7 @@ func check(ok: bool,label: String):
  if not ok:failures.append(label)
 func _initialize():call_deferred("run")
 func run():
- var g=load("res://main.tscn").instantiate();g.save_path="res://tests/.clarity016";root.add_child(g);await process_frame;g.session.enabled=false;g.set_process(false);g.muted=true;g.skills={};g.new_run(42)
+ var g=load("res://main.tscn").instantiate();g.save_path="res://tests/.clarity016";root.add_child(g);await process_frame;g.session.enabled=false;g.set_process(false);g.muted=true;g.skills={};preload("res://tools/historical_run.gd").start(g,42,18)
  for key in Presenter.ORDER+g.build_view.META.keys():check(g.stat_ui.info(key).size()==3 and g.stat_ui.info(key)[2]!="","Every displayed stat has icon, title and explanation: "+key)
  var item=g.make_gear("weapon",4,2,["health","fire_dps"],"dagger");g.inventory=[item];g.equipped={"weapon":0};g.recalculate_stats();g.hp=g.max_hp
  var original=var_to_bytes([g.inventory,g.equipped,g.hp,g.max_hp,g.vitality_tax,g.rng.state]);var data=Preview.preview(g)
@@ -27,5 +27,5 @@ func run():
  check(g.stat_ui.notice_age==age,"Repeated blocked actions extend the notice without replaying its pop")
  g.log_line("Entered chamber II.");check(g.stat_ui.blocked,"Routine movement does not immediately overwrite a blocked-action reason")
  g.stat_ui.notice_left=0;g.mode="fight";g.log_line("Your strike: 12 damage.");check(g.stat_ui.notice_left==0,"Combat logs do not spam notification pop-ups")
- g.new_run(42);check(not g.equipped.has("weapon") and Preview.preview(g).is_empty(),"No-weapon shrine preview is safely unavailable")
+ preload("res://tools/historical_run.gd").start(g,42,18);check(not g.equipped.has("weapon") and Preview.preview(g).is_empty(),"No-weapon shrine preview is safely unavailable")
  g.free();print(JSON.stringify({"checks":checks,"failures":failures}));quit(0 if failures.is_empty() else 1)

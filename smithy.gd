@@ -32,7 +32,19 @@ const RECIPES={
  "helmet_bloodbound":["Bloodbound helmet","helmet","balanced"],
  "amulet_keen":["Keen amulet","amulet","balanced"],
  "amulet_swift":["Swift amulet","amulet","balanced"],
- "amulet_bloodbound":["Bloodbound amulet","amulet","balanced"]}
+ "amulet_bloodbound":["Bloodbound amulet","amulet","balanced"],
+ "bloodletter":["Bloodletter","weapon","dagger"],
+ "winterblade":["Winterblade","weapon","greatblade"],
+ "caustic":["Caustic brand","weapon","ember"],
+ "colossus_axe":["Colossus axe","weapon","axe"],
+ "colossus_greatblade":["Colossus greatblade","weapon","greatblade"]}
+const SPECIALS={
+ "bloodletter":{"base":"dagger","variant":"bloodletter","mastery":"bloodletter"},
+ "winterblade":{"base":"greatblade","variant":"winterblade","mastery":"winterblade"},
+ "caustic":{"base":"ember","variant":"caustic","mastery":"caustic"},
+ "colossus_axe":{"base":"axe","heavy_form":"colossus","floor":3},
+ "colossus_greatblade":{"base":"greatblade","heavy_form":"colossus","floor":3}}
+const PAGE_SIZE=18
 const VARIANTS={
  "sword_keen":["sword","crit_chance",1,2,"alloy"],
  "sword_swift":["sword","speed",1,3,"essence"],
@@ -79,14 +91,14 @@ var tab="weapon"
 var selected_blueprint=""
 var stats_page=0
 var filter_index=0
-const FILTERS=["All","Craftable","Owned","Undiscovered","Keen","Swift","Bloodbound"]
+const FILTERS=["All","Craftable","Owned","Undiscovered","Keen","Swift","Bloodbound","Special"]
 var return_mode="sanctuary"
 var notices: Array=[]
 var notice_time=0.0
 const NOTICE_SECONDS=3.5
 const ELEMENTS=["fire","ice","acid","poison"]
 func _init(game):g=game
-static func empty() -> Dictionary:return {"blueprints":{"sword":true},"items":{"sword":1},"loadout":{"weapon":"sword"},"materials":{"ore":0,"monster":0,"boss":0,"alloy":0,"essence":0,"relic":0},"elements":{},"infusions":{},"goal":{},"unseen_blueprints":{},"unseen_items":{},"unseen_runes":{},"slot_levels":{"weapon":1,"shield":1,"armor":1,"helmet":1,"amulet":1}}
+static func empty() -> Dictionary:return {"blueprints":{"sword":true},"items":{"sword":1},"loadout":{"weapon":"sword"},"materials":{"ore":0,"monster":0,"boss":0,"alloy":0,"essence":0,"relic":0},"elements":{},"infusions":{},"goal":{},"unseen_blueprints":{},"unseen_items":{},"unseen_runes":{},"metrics":{},"slot_levels":{"weapon":1,"shield":1,"armor":1,"helmet":1,"amulet":1}}
 func data() -> Dictionary:
  if not g.career.has("workshop") or not g.career.workshop is Dictionary:g.career["workshop"]=empty()
  var p=g.career.workshop;var defaults=empty()
@@ -104,6 +116,15 @@ func data() -> Dictionary:
   if not p.materials.has(key):p.materials[key]=0
  for slot in g.Gear.SLOTS:
   p.slot_levels[slot]=clampi(int(p.slot_levels.get(slot,1)),1,5)
+ # Migrate completed masteries and grant newly completed ones idempotently.
+ # Blueprint ownership is the receipt; inspecting it never grants duplicate ore.
+ var goals=preload("res://build_mastery.gd").GOALS
+ for id in SPECIALS:
+  var mastery_id=str(SPECIALS[id].get("mastery",""))
+  if mastery_id=="" or p.blueprints.has(id):continue
+  var goal=goals[mastery_id]
+  if int(g.career.get("mastery",{}).get(goal.metric,0))>=int(goal.target):
+   p.blueprints[id]=true;p.unseen_blueprints[id]=true
  return p
 func cargo() -> Dictionary:
  if not g.run_metrics.get("cargo") is Dictionary:g.run_metrics["cargo"]={"blueprints":{},"ore":0,"monster":0,"boss":0,"committed":false}
@@ -123,17 +144,26 @@ func reward(item: Dictionary,amount: int=1) -> String:
  if element in ELEMENTS:
   if p.elements.has(element) or c.elements.has(element):c.ore+=3+amount;return "Known "+element.capitalize()+" rune: +%d ore"%(3+amount)
   c.elements[element]=true;show_discovery("rune",element);return element.capitalize()+" rune blueprint discovered"
- var pool=[id]
  var max_rarity=clampi(int(item.get("rarity",0)),0,2)
- for key in VARIANTS:
-  var v=VARIANTS[key]
-  if v[0]==id and int(v[2])<=max_rarity and int(v[3])<=g.floor_number:pool.append(key)
+ var pool=discovery_candidates(id,max_rarity,g.floor_number)
  var unseen=[]
  for key in pool:
   if not p.blueprints.has(key) and not c.blueprints.has(key):unseen.append(key)
  if not unseen.is_empty():id=unseen[g.rng.randi_range(0,unseen.size()-1)]
  if p.blueprints.has(id) or c.blueprints.has(id):c.ore+=2+amount;return "Known blueprint: +%d ore"%(2+amount)
  c.blueprints[id]=true;show_discovery("equipment",id);return "Blueprint discovered: "+RECIPES[id][0]
+func discovery_candidates(base: String,rarity: int,floor_number: int) -> Array:
+ var result=[base]
+ for id in VARIANTS:
+  var v=VARIANTS[id]
+  if v[0]==base and int(v[2])<=rarity and int(v[3])<=floor_number:result.append(id)
+ for id in SPECIALS:
+  var special=SPECIALS[id]
+  if not special.has("mastery") and special.base==base and rarity>=1 and floor_number>=int(special.floor):result.append(id)
+ return result
+func base_recipe(id: String) -> String:
+ if SPECIALS.has(id):return str(SPECIALS[id].base)
+ return str(VARIANTS[id][0]) if VARIANTS.has(id) else id
 func show_discovery(kind: String,id: String) -> void:
  notices.append({"kind":kind,"id":id})
  if notices.size()==1:notice_time=NOTICE_SECONDS
@@ -177,20 +207,30 @@ func make_item(id: String,level: int,element: String="") -> Dictionary:
  var spec=RECIPES[id]
  # Crafted equipment must be deterministic; g.make_gear randomly rolls amulets.
  var variant=VARIANTS.get(id,[])
- var rarity=int(variant[2]) if not variant.is_empty() else 0
+ var rarity=1 if SPECIALS.has(id) else int(variant[2]) if not variant.is_empty() else 0
  var affixes=[variant[1]] if not variant.is_empty() else []
  var item=g.Gear.make(spec[1],level,rarity,affixes,spec[2]);item["balance"]=7;item.name=spec[0]
- if not variant.is_empty():item["forge_style"]=id.get_slice("_",id.get_slice_count("_")-1)
+ if not variant.is_empty():
+  item["forge_style"]=id.get_slice("_",id.get_slice_count("_")-1)
+  if spec[1]=="weapon":item["family_revision"]=2
+ if SPECIALS.has(id):
+  for key in ["variant","heavy_form"]:
+   if SPECIALS[id].has(key):item[key]=SPECIALS[id][key]
  if spec[1]=="armor":item.armor_class="light" if id.begins_with("light_armor") else "heavy"
  if element in ELEMENTS:item["infusion"]=element
  return item
 func style_description(item: Dictionary) -> String:
+ if item.get("heavy_form","")=="colossus":return "Colossus: stronger physical hits, slower attacks."
+ match item.get("variant",""):
+  "bloodletter":return "Bloodletter: lifesteal replaces innate evade."
+  "winterblade":return "Winterblade: Frost power, less item attack."
+  "caustic":return "Caustic brand: Acid power, less Fire potency."
  var style=str(item.get("forge_style",""));var slot=str(item.get("slot",""))
  if slot=="weapon":
   match style:
-   "keen":return "Keen: crit chance and crit damage."
-   "swift":return "Swift: faster attacks, less weapon attack."
-   "bloodbound":return "Bloodbound: lifesteal, less evade." if item.get("archetype","")=="dagger" else "Bloodbound: lifesteal, less weapon attack."
+   "keen":return "Keen: stronger critical hits and higher crit chance."
+   "swift":return "Swift: faster combos and triggers; 5% less item attack."
+   "bloodbound":return "Bloodbound: lifesteal; 10% less item attack."
  elif slot in ["shield","armor","helmet"]:
   match style:
    "keen":return "Keen: crit chance and armor; slower attacks."
@@ -217,11 +257,16 @@ func cost_for(id: String,level: int) -> Dictionary:
  var costs={"ore":3+level*3,"monster":2+level*2,"boss":1 if level>=2 else 0}
  if VARIANTS.has(id):
   var v=VARIANTS[id];costs[v[4]]=1+int(level/2)
+ if SPECIALS.has(id):costs.boss=maxi(1,int(costs.boss))
  return costs
 func slot_cost(slot: String) -> Dictionary:
  var level=int(data().slot_levels.get(slot,1))
  return {"ore":3+level*3,"monster":2+level*2,"boss":1 if level>=2 else 0}
 func blueprint_source(id: String) -> String:
+ if SPECIALS.has(id):
+  var special=SPECIALS[id]
+  if special.has("mastery"):return "Mastery: "+preload("res://build_mastery.gd").GOALS[special.mastery].requirement
+  return "F%d+ %s reward / Rare+ / chance"%[special.floor,RECIPES[special.base][0]]
  var v=VARIANTS.get(id,[]);var base_id=str(v[0]) if not v.is_empty() else id
  var base_name=str(RECIPES[base_id][0])
  var floor_number=int(v[3]) if not v.is_empty() else 1
@@ -269,13 +314,13 @@ func draw_materials(entries: Array,at: Vector2,cell_width: float=180.0,size: int
   g.stat_ui.register(MATERIAL_ICONS[id],Rect2(pos,Vector2(size,size)).grow(3),LABELS[id],MATERIAL_HELP[id])
   g.text(pos+Vector2(size+4,size-3),LABELS[id]+" "+str(entry.get("value","")),15,Color("e88882") if entry.get("short",false) else g.TEAL)
 func discovery_pool_size(id: String) -> int:
- var v=VARIANTS.get(id,[]);var base=str(v[0]) if not v.is_empty() else id
+ if SPECIALS.has(id) and SPECIALS[id].has("mastery"):return 1
+ var v=VARIANTS.get(id,[]);var base=base_recipe(id)
  var minimum_floor=int(v[3]) if not v.is_empty() else 1;var rarity=int(v[2]) if not v.is_empty() else 0
+ if SPECIALS.has(id):minimum_floor=int(SPECIALS[id].floor);rarity=1
  var p=data();var count=0
- if not p.blueprints.has(base):count+=1
- for key in VARIANTS:
-  var candidate=VARIANTS[key]
-  if candidate[0]==base and int(candidate[2])<=rarity and int(candidate[3])<=minimum_floor and not p.blueprints.has(key):count+=1
+ for key in discovery_candidates(base,rarity,minimum_floor):
+  if not p.blueprints.has(key):count+=1
  return maxi(1,count)
 func cost_text(costs: Dictionary) -> String:
  var parts=[]
@@ -346,7 +391,7 @@ func handle(id:String) -> bool:
   var before=p.duplicate(true);p.materials.ore-=cost;p.materials.monster-=2;p.infusions[infusion_item]=element
   if not g.session.commit_profile():g.career.workshop=before;message="Could not save infusion; materials restored.";return true
   message="Applied: "+element.capitalize()+" rune on "+RECIPES[infusion_item][0]+". Saved for future runs.";return true
- if id=="smithy_next":page=mini(maxi(0,int((category_ids(tab).size()-1)/24)),page+1);return true
+ if id=="smithy_next":page=mini(maxi(0,int((filtered_ids(tab).size()-1)/PAGE_SIZE)),page+1);return true
  if id=="smithy_prev":page=maxi(0,page-1);return true
  if id.begins_with("smithy_make:"):
   var key=id.trim_prefix("smithy_make:");var p=data()
@@ -357,6 +402,7 @@ func handle(id:String) -> bool:
   var before=p.duplicate(true)
   for material in costs:p.materials[material]-=costs[material]
   p.items[key]=1;p.unseen_items[key]=true
+  if g.playtest:g.playtest.crafted(p,key)
   if not g.session.commit_profile():g.career.workshop=before;message="Could not save crafting; materials restored.";return true
   message=RECIPES[key][0]+" crafted. It uses the shared "+RECIPES[key][1]+" slot level.";return true
  if id.begins_with("smithy_upgrade_slot:"):
@@ -394,6 +440,7 @@ func filtered_ids(slot: String) -> Array:
   if filter=="Owned" and not owned:continue
   if filter=="Undiscovered" and known:continue
   if filter in ["Keen","Swift","Bloodbound"] and not id.ends_with("_"+filter.to_lower()):continue
+  if filter=="Special" and not SPECIALS.has(id):continue
   result.append(id)
  return result
 func material_sources(costs: Dictionary) -> String:
@@ -439,11 +486,11 @@ func draw() -> void:
  g.panel(Rect2(60,195,570,485));g.panel(Rect2(650,195,570,485))
  g.text(Vector2(80,227),tab.to_upper()+" BLUEPRINTS  %d / %d"%[blueprint_count(p,tab),category_ids(tab).size()],19,g.GOLD)
  g.button(Rect2(415,200,195,35),"Filter: "+FILTERS[filter_index],"smithy_filter")
- var ids=filtered_ids(tab);var pages=maxi(1,ceili(ids.size()/24.0));page=clampi(page,0,pages-1)
+ var ids=filtered_ids(tab);var pages=maxi(1,ceili(float(ids.size())/PAGE_SIZE));page=clampi(page,0,pages-1)
  var inspected=selected_blueprint
  if ids.is_empty():g.draw_wrapped("No blueprints match this filter.",Vector2(90,290),460,20,g.INK,2)
- for i in range(24):
-  var index=page*24+i
+ for i in range(PAGE_SIZE):
+  var index=page*PAGE_SIZE+i
   if index>=ids.size():break
   var id=ids[index];var known=p.blueprints.has(id);var at=Vector2(82+(i%6)*87,245+int(i/6)*91);var rect=Rect2(at,Vector2(76,76))
   g.button(rect,"","smithy_select:"+id,selected_blueprint==id,true)
@@ -455,19 +502,20 @@ func draw() -> void:
   else:g.text(at+Vector2(26,47),"?",25,Color("737078"))
   if not g.menu_keyboard and rect.has_point(g.design_mouse()):inspected=id
  if pages>1:
-  g.button(Rect2(82,625,120,40),"Previous","smithy_prev",false,page>0);g.text(Vector2(248,652),"%d / %d"%[page+1,pages],18,g.TEAL);g.button(Rect2(420,625,120,40),"Next","smithy_next",false,page<pages-1)
+  g.button(Rect2(82,535,120,40),"Previous","smithy_prev",false,page>0);g.text(Vector2(248,562),"%d / %d"%[page+1,pages],18,g.TEAL);g.button(Rect2(420,535,120,40),"Next","smithy_next",false,page<pages-1)
  var slot_lv=int(p.slot_levels[tab]);var slot_cost={"ore":3+slot_lv*3,"monster":2+slot_lv*2,"boss":1 if slot_lv>=2 else 0}
- if pages==1:
-  if slot_lv>=5:g.text(Vector2(82,606),"Slot upgrade: Maximum level",15,g.TEAL)
-  else:draw_materials(cost_progress_entries(slot_cost),Vector2(82,600),165,18)
-  g.button(Rect2(82,625,350,40),tab.capitalize()+" slot / level %d"%slot_lv+(" / MAX" if slot_lv>=5 else " → %d"%(slot_lv+1)),"smithy_upgrade_slot:"+tab,false,slot_lv<5)
-  g.button(Rect2(442,625,130,40),"Track","smithy_track_slot:"+tab,false,slot_lv<5)
+ if slot_lv>=5:g.text(Vector2(82,606),"Slot upgrade: Maximum level",15,g.TEAL)
+ else:draw_materials(cost_progress_entries(slot_cost),Vector2(82,600),165,18)
+ g.button(Rect2(82,625,350,40),tab.capitalize()+" slot / level %d"%slot_lv+(" / MAX" if slot_lv>=5 else " → %d"%(slot_lv+1)),"smithy_upgrade_slot:"+tab,false,slot_lv<5)
+ g.button(Rect2(442,625,130,40),"Track","smithy_track_slot:"+tab,false,slot_lv<5)
  if inspected!="" and RECIPES.has(inspected):draw_grid_details(p,inspected)
  else:g.draw_wrapped("Select a blueprint to see its effects, crafting cost and where to find it.",Vector2(685,270),490,22,g.INK,5)
  var footer=message
  if footer=="" and inspected!="" and RECIPES.has(inspected) and not p.items.has(inspected):
   footer=material_sources(cost_for(inspected,0))
-  if not p.blueprints.has(inspected):footer="At earliest floor and minimum rarity: 1 in %d eligible unseen designs.  "%discovery_pool_size(inspected)+footer
+  if not p.blueprints.has(inspected):
+   if SPECIALS.has(inspected) and SPECIALS[inspected].has("mastery"):footer="Guaranteed blueprint when its mastery is completed.  "+footer
+   else:footer="At earliest floor and minimum rarity: 1 in %d eligible unseen designs.  "%discovery_pool_size(inspected)+footer
  if footer!="":
   g.panel(Rect2(60,686,1160,40));g.draw_wrapped(footer,Vector2(75,713),1120,18,g.GOLD if message!="" else g.TEAL,1)
  g.button(Rect2(60,750,240,48),"Back","smithy_back")
@@ -479,12 +527,13 @@ func draw_grid_details(p: Dictionary,id: String) -> void:
  g.text(Vector2(760,278),["Common","Rare","Very rare"][item.rarity]+(" / Slot level %d"%level if owned else " / Not crafted" if known else " / Undiscovered"),17,g.TEAL)
  var variant=VARIANTS.get(id,[])
  if not known:g.text(Vector2(680,302),blueprint_source(id),16,g.TEAL)
+ elif SPECIALS.has(id):g.text(Vector2(680,302),"Special blueprint / Warden core required",16,g.TEAL)
  elif not variant.is_empty():g.text(Vector2(680,302),"Blueprint: floor %d+ / %s required"%[variant[3],LABELS[variant[4]]],16,g.TEAL)
  var identity=style_description(item)
  if identity!="":g.text(Vector2(680,330),identity,16,g.GOLD)
  if item.slot=="weapon":g.draw_wrapped(g.choice_ui.weapon_description(item),Vector2(680,355 if identity!="" else 330),500,18,g.INK,2 if identity!="" else 3)
  var presenter=preload("res://equipment_presenter.gd")
- var base_id=str(variant[0]) if not variant.is_empty() else ""
+ var base_id=base_recipe(id) if VARIANTS.has(id) or SPECIALS.has(id) else ""
  var old=presenter.numbers(make_item(base_id,level)) if base_id!="" else {}
  var next_stats=presenter.numbers(item);var rows=presenter.comparison_keys(old,next_stats) if base_id!="" else presenter.keys(old,next_stats)
  var pages=maxi(1,ceili(float(rows.size())/4.0));stats_page=clampi(stats_page,0,pages-1)

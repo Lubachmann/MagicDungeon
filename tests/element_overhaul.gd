@@ -1,4 +1,5 @@
 extends SceneTree
+## Historical rules-18 starter/forge contracts, before fixed crafted loadouts.
 const Combat=preload("res://combat.gd")
 const Elements=preload("res://element_rules.gd")
 const Stats=preload("res://build_stats.gd")
@@ -39,7 +40,7 @@ func run():
 	check(predicted.won==s.won and predicted.hp==s.hp,"Element forecasts match actual combat")
 	var g=load("res://main.tscn").instantiate();g.save_path="res://tests/.elements015.json";root.add_child(g);await process_frame;g.session.enabled=false;g.set_process(false);g.skills={}
 	for seed_value in range(20):
-		g.new_run(seed_value);var forges=0
+		preload("res://tools/historical_run.gd").start(g,seed_value,18);var forges=0
 		for coord in g.rooms:
 			for e in g.rooms[coord].entities.values():
 				if e.kind=="salvage":forges+=1
@@ -49,7 +50,7 @@ func run():
 			check(item.rarity==0 and item.level==1 and item.affixes.is_empty() and item.get("plain",false),"No-tree starters are plain common weapons")
 			var values=g.Gear.stats(item);check(values.keys().all(func(key):return key in ["attack","speed"]),"Starters have only damage and interval stats")
 			g.inventory=[item];g.equipped={"weapon":0};g.recalculate_stats();check(g.combat_build().weapon=="plain","Starter weapon procs are disabled")
-	g.new_run(42)
+	preload("res://tools/historical_run.gd").start(g,42,18)
 	for element in ["fire","ice","acid","poison"]:
 		var old={"fire":"fire_dps","ice":"ice_slow","acid":"acid_strip","poison":"poison_weak"}[element]
 		var item=g.make_gear("weapon",1,1,[old]);var key=Elements.KEYS[element]
@@ -64,7 +65,7 @@ func run():
 	check(not g.dungeon_threads.can_infuse("fire"),"Second free imprint is blocked")
 	g.floor_number=2;g.generate_floor();check(not g.floor_flags.get("free_imprint_used",false),"Free imprint resets on each floor")
 	g.run_skills={"poison_mastery":10};check("+1.5" in g.choice_ui.summary("venom"),"Upgrade headline includes mastery in the actual gain")
-	g.skills={"smithcraft":1};g.new_run(42)
+	g.skills={"smithcraft":1};preload("res://tools/historical_run.gd").start(g,42,18)
 	var upgraded_starter=g.rooms[g.room].entities[g.rooms[g.room].chest].item
 	var rare=upgraded_starter.rarity==1 and not upgraded_starter.get("plain",false)
 	check(rare,"Quartermaster upgrades starting gear")

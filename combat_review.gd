@@ -6,6 +6,8 @@ func begin() -> void:
 func event(hit: Dictionary) -> void:
 	if not g.run_metrics.has("last_fight"):begin()
 	var s=g.run_metrics.last_fight
+	s["shield_blocked"]=float(s.get("shield_blocked",0))+float(hit.get("shield_absorbed",0))
+	s["sword_blocked"]=float(s.get("sword_blocked",0))+float(hit.get("shield_sources",{}).get("sword",0))
 	s.healed+=float(hit.get("enemy_heal",0));s.drained+=int(hit.get("vamp_heal",0));s.armor+=float(hit.get("armor_prevented",0))
 	if hit.player:
 		if hit.get("poison_tick",false):s["poison"]=float(s.get("poison",0))+hit.actual_damage
@@ -19,6 +21,11 @@ func handle(id: String) -> bool:
 	if id=="recap_open":g.run_metrics["recap_return"]=g.mode;g.mode="recap";return true
 	if id=="recap_close":g.mode=g.run_metrics.get("recap_return","dead");return true
 	return false
+func contribution(s: Dictionary) -> String:
+	if float(s.get("sword_blocked",0))>0:return "Sword ward blocked %.0f damage."%float(s.sword_blocked)
+	if float(s.get("shield_blocked",0))>0:return "Your shields blocked %.0f damage."%float(s.shield_blocked)
+	if int(s.get("drained",0))>0:return "Vampirism restored %d HP."%int(s.drained)
+	return ""
 func advice(s: Dictionary) -> String:
 	if s.get("healed",0)>=float(s.get("enemy_max",1))*0.2:
 		if s.get("signature","")=="abbot":return "Burn the Abbot to cut healing by 50%. Interrupts delay the next heal."
@@ -32,9 +39,9 @@ func draw() -> void:
 	if s.is_empty():g.text(Vector2(195,230),"No combat recap is available yet.",24)
 	else:
 		g.text(Vector2(195,185),"%s / Floor %d"%[s.enemy,s.floor],24,g.GOLD)
-		var rows=[["attack","Weapon damage dealt",s.physical],["fire","Fire damage dealt",s.fire],["poison","Poison damage dealt",s.get("poison",0)],["armor","Armor mitigation before shields",s.armor],["potion","Enemy HP restored",s.healed],["health","Damage taken",s.taken],["health","HP from vampirism",s.drained]]
+		var rows=[["attack","Weapon damage dealt",s.physical],["fire","Fire damage dealt",s.fire],["poison","Poison damage dealt",s.get("poison",0)],["armor","Damage blocked by enemy armor",s.armor],["potion","Enemy HP restored",s.healed],["health","Damage taken",s.taken],["health","HP from vampirism",s.drained],["armor","Damage blocked by your shields",s.get("shield_blocked",0)],["armor","Blocked by Sword ward",s.get("sword_blocked",0)]]
 		for i in range(rows.size()):
-			var at=Vector2(195,235+i*51);g.stat_ui.icon({"attack":"weapon_dps","fire":"fire","poison":"poison","armor":"armor","potion":"max_hp","health":"current_hp"}.get(rows[i][0],"attack"),at,28,rows[i][1],"Total for the last encounter. This is an encounter summary, not an item bonus.");g.text(at+Vector2(45,23),rows[i][1],21);g.text(at+Vector2(695,23),"%.1f"%float(rows[i][2]),27,g.GOLD)
+			var at=Vector2(195,235+i*34);g.stat_ui.icon({"attack":"weapon_dps","fire":"fire","poison":"poison","armor":"armor","potion":"max_hp","health":"current_hp"}.get(rows[i][0],"attack"),at,28,rows[i][1],"Total for the last encounter. This is an encounter summary, not an item bonus.");g.text(at+Vector2(45,23),rows[i][1],21);g.text(at+Vector2(695,23),"%.1f"%float(rows[i][2]),27,g.GOLD)
 		g.text(Vector2(195,565),"Critical hits: %d / Dodges: %d"%[s.crits,s.dodges],20,g.INK)
-		g.draw_wrapped(advice(s),Vector2(195,595),870,22,g.TEAL,3)
+		g.draw_wrapped((contribution(s)+" "+advice(s)).strip_edges(),Vector2(195,595),870,22,g.TEAL,3)
 	g.button(Rect2(195,685,870,48),"Back / Esc","recap_close")

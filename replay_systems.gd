@@ -23,7 +23,7 @@ var codex_search=""
 var codex_search_active=false
 var codex_keyboard=false
 func _init(game):g=game
-static func new_career() -> Dictionary:return {"guided_done":false,"runs":0,"wins":0,"deaths":0,"best_floor":0,"best_threat":0,"bestiary":{},"relics":{},"gear":{},"bounties":0,"history":[],"daily":{},"tiers":[],"mastery":preload("res://build_mastery.gd").empty_progress(),"sanctuary":preload("res://sanctuary.gd").empty(),"workshop":preload("res://smithy.gd").empty()}
+static func new_career() -> Dictionary:return {"journey":{},"guided_done":false,"runs":0,"wins":0,"deaths":0,"best_floor":0,"best_threat":0,"bestiary":{},"relics":{},"gear":{},"bounties":0,"history":[],"daily":{},"tiers":[],"mastery":preload("res://build_mastery.gd").empty_progress(),"sanctuary":preload("res://sanctuary.gd").empty(),"workshop":preload("res://smithy.gd").empty()}
 static func clean_career(data) -> Dictionary:
 	var result=new_career()
 	if data is Dictionary:
@@ -33,6 +33,7 @@ static func clean_career(data) -> Dictionary:
 				elif typeof(data[key])==typeof(result[key]):result[key]=data[key]
 	if data is Dictionary and not data.is_empty() and not data.has("sanctuary"):
 		result.sanctuary=preload("res://sanctuary.gd").migrate_old(data)
+	if data is Dictionary and not data.has("journey") and int(result.runs)>0:result.journey={"skipped":true}
 	var sanctuary=preload("res://sanctuary.gd").empty()
 	for key in sanctuary:
 		if result.sanctuary.has(key) and typeof(result.sanctuary[key])==typeof(sanctuary[key]):sanctuary[key]=result.sanctuary[key]
@@ -54,10 +55,9 @@ func daily_seed(date: String="") -> int:
 	var day=Time.get_date_string_from_system(true) if date=="" else date
 	return int(("MagicDungeon-05-"+day).hash()) & 0x7fffffff
 func configure_run() -> void:
+	draft.mode="standard"
 	g.run_settings=draft.duplicate(true)
 	if demo_next:g.run_settings={"mode":"standard","vows":{}}
-	if g.run_settings.mode=="daily":g.run_settings={"mode":"daily","vows":{},"date":Time.get_date_string_from_system(true)}
-	if g.run_settings.mode=="daily":g.run_skills={};g.rng.seed=daily_seed();g.run_seed=daily_seed()
 	demo_next=false
 	g.run_bounties={};g.run_recorded=false;g.run_metrics={"bosses":0,"runes":0,"breaks":0,"started_from":g.mode}
 func start_bounties() -> void:
@@ -113,7 +113,7 @@ func record(won: bool) -> void:
 	if won and not g.demo_run and g.run_settings.mode!="daily":
 		g.career.best_threat=maxi(int(g.career.best_threat),threat())
 		if threat()>0 and threat() not in g.career.tiers:g.career.tiers.append(threat());g.shards+=50;g.log_line("First clear at Threat %d: +50 embers."%threat())
-	var report={"seed":g.run_seed,"mode":g.run_settings.mode,"floor":g.floor_number,"won":won,"threat":threat(),"time":int(g.summary.time),"level":g.character_level,"kills":g.kills,"tree_ranks":g.run_skills.duplicate(true),"metrics":g.run_metrics.duplicate(true),"build":"0.16.0","rules":g.run_rules,"exact_forecasts":bool(g.session.preferences.exact_forecasts),"death_reason":g.death_reason if not won else "","damage_dealt":g.summary.dealt,"damage_taken":g.summary.taken}
+	var report={"seed":g.run_seed,"mode":g.run_settings.mode,"floor":g.floor_number,"won":won,"threat":threat(),"time":int(g.summary.time),"level":g.character_level,"kills":g.kills,"tree_ranks":g.run_skills.duplicate(true),"metrics":g.run_metrics.duplicate(true),"build":preload("res://playtest_report.gd").BUILD,"rules":g.run_rules,"exact_forecasts":bool(g.session.preferences.exact_forecasts),"death_reason":g.death_reason if not won else "","damage_dealt":g.summary.dealt,"damage_taken":g.summary.taken}
 	report["equipment"]=equipment_report();report["relics"]=g.relics.duplicate();report["elements"]=g.elements.duplicate();report["vows"]=g.run_settings.get("vows",{}).duplicate()
 	g.career.history.push_front(report)
 	if g.career.history.size()>12:g.career.history.resize(12)
@@ -135,11 +135,7 @@ func handle(id: String) -> bool:
 		g.loadout_menu.open("expedition")
 		return true
 	if id.begins_with("run_mode:") and g.mode=="expedition":
-		var value=id.get_slice(":",1)
-		if value=="endless" and int(g.career.wins)==0:g.ui_help.show("endless");return true
-		if value in ["standard","daily"] or (value=="endless" and int(g.career.wins)>0):
-			draft.mode=value
-			if value=="daily":draft.vows={}
+		draft.mode="standard"
 		return true
 	if id.begins_with("vow:") and g.mode=="expedition":
 		var key=id.get_slice(":",1)
@@ -179,7 +175,7 @@ func handle(id: String) -> bool:
 func draw_expedition_details() -> void:
 	g.front_end.menu_backdrop();g.panel(Rect2(180,95,920,640))
 	g.text(Vector2(220,150),"EXPEDITION RULES",30,g.GOLD)
-	var description={"standard":"Five floors. Take materials and discoveries home on death, extraction or victory.","daily":"Fixed sword, empty Ember Tree and no vows. Score and banked embers persist; materials and blueprints do not.","endless":"Continue beyond floor five. Take materials and discoveries home when you return."}.get(str(draft.mode),"")
+	var description="Five floors. Take materials and discoveries home on death, extraction or victory."
 	g.draw_wrapped(description,Vector2(220,195),830,20,g.INK,3)
 	g.text(Vector2(220,280),"SELECTED VOWS / THREAT %d"%threat(draft),20,g.GOLD)
 	var i=0
@@ -193,13 +189,12 @@ func draw_expedition_details() -> void:
 	g.text(Vector2(220,655),"Banked embers: +%d%% from Threat."%(8*threat(draft)),18,g.TEAL)
 	g.button(Rect2(220,680,300,42),"Back","expedition_details_back")
 func draw_setup() -> void:
+	draft.mode="standard"
 	if expedition_details_open:draw_expedition_details();return
 	g.front_end.menu_backdrop();g.text(Vector2(75,82),"EXPEDITION",36,g.GOLD)
-	var modes=["standard","daily","endless"]
-	for i in range(3):
-		var at=Vector2(75+i*395,125);var id=modes[i]
-		g.front_end.icon_button(Rect2(at,Vector2(370,110)),["attack","sun","vault"][i],(["Dungeon","Daily","Endless"][i]+(" / Locked" if id=="endless" and int(g.career.wins)==0 else "")),"run_mode:"+id,draft.mode==id,true)
-		g.text(at+Vector2(72,91),["Keep rewards on return","Fixed loadout / no materials kept","Beyond floor 5 / keep rewards"][i],15,g.TEAL)
+	g.panel(Rect2(75,125,1160,110))
+	g.text(Vector2(105,170),"DUNGEON / FIVE FLOORS",28,g.GOLD)
+	g.text(Vector2(105,208),"Prepare at the Hearth. Gather materials and discoveries to bring home.",20,g.TEAL)
 	g.button(Rect2(530,246,250,40),"Mode / vow details","expedition_details")
 	g.text(Vector2(75,280),"VOWS",24,g.GOLD)
 	g.text(Vector2(850,280),"THREAT %d / +%d%%"%[threat(draft),8*threat(draft)],23,g.TEAL)
@@ -208,9 +203,8 @@ func draw_setup() -> void:
 		var value=VOWS[id];var at=Vector2(75+(i%3)*395,320+(i/3)*125)
 		g.front_end.icon_button(Rect2(at,Vector2(370,100)),value[1],value[0]+(" / Locked" if int(g.career.wins)==0 or draft.mode=="daily" else "  %d/%d"%[int(draft.vows.get(id,0)),value[2]]),"vow:"+id,false,true)
 		g.draw_wrapped(value[3],at+Vector2(75,85),280,15,g.TEAL,1);i+=1
-	var hint="Clear the dungeon to unlock Vows and Endless."
-	if draft.mode=="daily":hint="UTC %s / empty tree / best score %d"%[Time.get_date_string_from_system(true),int(g.career.daily.get(Time.get_date_string_from_system(true),0))]
-	elif selected in VOWS:hint=VOWS[selected][3]
+	var hint="Clear the dungeon to unlock Vows."
+	if selected in VOWS:hint=VOWS[selected][3]
 	elif int(g.career.wins)>0:hint="Optional Vows change the rules. +8% banked embers per Threat."
 	g.draw_wrapped(hint,Vector2(75,615),1120,22,g.INK,2)
 	var goal=g.smithy.goal_info()
@@ -225,6 +219,7 @@ func draw_setup() -> void:
 	g.front_end.icon_button(Rect2(360,730,370,60),"relic","Build unlocks","build_unlocks")
 	g.front_end.icon_button(Rect2(800,710,360,80),"attack","Choose equipment","expedition_start")
 func relic_icon(id: String) -> String:
+	if g.UPGRADE_INFO.has(id):return str(g.UPGRADE_INFO[id][2])
 	if id=="heavy_momentum":return "attack"
 	if id=="quickdraw":return "speed"
 	if id=="combustion":return "fire"

@@ -1,5 +1,8 @@
 extends RefCounted
 var g
+var major_text=""
+var major_time=0.0
+var major_priority=0
 var sparks=[]
 var evade_time=0.0
 var impact_time=0.0
@@ -15,6 +18,7 @@ var rewards={"xp":0,"ember":0,"flasks":0}
 func _init(game):g=game
 func reduced() -> bool:return g.session and g.session.preferences.reduced_flashes
 func tick(delta: float) -> void:
+	major_time=maxf(0,major_time-delta)
 	bar_time=maxf(0,bar_time-delta)
 	hitstop=maxf(0,hitstop-delta);shake_time=maxf(0,shake_time-delta);level_time=maxf(0,level_time-delta);reward_time=maxf(0,reward_time-delta)
 	if reduced():hitstop=0;shake_time=0
@@ -26,7 +30,25 @@ func emit(kind: String,color: Color,at: Vector2) -> void:
 	if reduced():return
 	sparks.append({"kind":kind,"color":color,"at":at,"ttl":0.35,"scale":0.7+strength*0.7})
 	if sparks.size()>20:sparks.pop_front()
+func announce(event: Dictionary) -> void:
+	var label=str(event.get("effect",""));var priority=0
+	if label in ["FREEZE","ACID BREAK","GUARD BREAK","PLATES SHATTER","FROST SHATTER","BREAKTHROUGH"]:priority=3
+	elif label in ["SWORD WARD","ACID SHIELD","BLACK ICE SHIELD","SUNDER","COMBO","CLEAVE","FLARE"]:priority=2
+	if event.get("combo_lost",false):label="COMBO LOST";priority=maxi(priority,2)
+	if event.get("shield_absorbed",0)>0 and priority<2:label="SHIELD BLOCKED %d"%int(event.shield_absorbed);priority=2
+	if priority==0:return
+	if major_time>0 and priority<major_priority:return
+	major_text=label;major_time=1.4;major_priority=priority
+func trim_numbers() -> void:
+	var count=0
+	for mote in g.motes:
+		if mote.get("ordinary",false):count+=1
+	while count>=6:
+		for i in range(g.motes.size()):
+			if g.motes[i].get("ordinary",false):g.motes.remove_at(i);count-=1;break
 func hit(event: Dictionary,battle: Dictionary) -> void:
+	if event.get("effect","") in ["SWORD WARD","COMBO","CLEAVE","SUNDER","FLARE"] and preload("res://early_journey.gd").enabled(g):preload("res://early_journey.gd").progress(g).ability_seen=true
+	announce(event)
 	state=battle
 	if event.player and event.actual_damage>0:bar_ghost=maxf(float(g.fight.hp),float(battle.enemy.hp));bar_time=0.22
 	if not reduced() and float(event.actual_damage)>0 and not event.get("dot",event.burn) and not event.regen:
@@ -100,6 +122,7 @@ func camera_offset() -> Vector2:
 	var amplitude=(0.5+strength*3.5)*clampf(shake_time/0.18,0,1)
 	return Vector2(sin(g.pulse*113),cos(g.pulse*137))*amplitude
 func clear() -> void:
+	major_text="";major_time=0;major_priority=0
 	sparks.clear();evade_time=0;impact_time=0;hitstop=0;shake_time=0;bar_time=0;level_time=0;reward_time=0;state={}
 func level_up(_count: int) -> void:
 	level_time=3.0;g.sfx("blessing")
@@ -110,6 +133,8 @@ func reward(xp: int,embers: int,flasks: int=0) -> void:
 	if reward_time<=0:rewards={"xp":0,"ember":0,"flasks":0}
 	rewards.xp+=xp;rewards.ember+=embers;rewards.flasks+=flasks;reward_time=4.5
 func draw_ui() -> void:
+	if major_time>0 and g.mode=="fight":
+		g.panel(Rect2(650,141,305,29));g.text(Vector2(662,163),major_text,18,g.GOLD)
 	if g.mode=="upgrade" and level_time>0 and not reduced():
 		g.draw_rect(Rect2(54,31,755,77),Color(g.GOLD,0.25+0.3*(sin(g.pulse*5)+1)/2),false,2)
 	if reward_time<=0 or g.mode not in ["play","fight","upgrade","floor"]:return

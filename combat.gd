@@ -179,14 +179,14 @@ static func step(state: Dictionary) -> Dictionary:
 					else:state.disrupted=true;state.e_time+=1.5
 					result["effect"]="FROST INTERRUPT"
 			if relics.has("bulwark") and not state.acid_triggered and float(state.initial_armor)>0 and state.acid_stacks>=float(e.armor):
-				state.acid_triggered=true;state.shield+=6+2*int(state.build.get("acid",0));result["effect"]="ACID SHIELD"
+				state.acid_triggered=true;Flow.add_shield(state,6+2*int(state.build.get("acid",0)),2147483647,"acid");result["effect"]="ACID SHIELD"
 		if heavy and "breakthrough" in relics:
 			var armor_after=maxf(0.0,float(e.armor)-float(state.acid_stacks))
 			if result.get("guard_break",false) or (armor_before>0.0 and armor_after<=0.00001):
 				state["breakthrough_ready"]=true
 				result["breakthrough_armed"]=true
 				if not result.has("effect"):result["effect"]="BREAKTHROUGH READY"
-		if relics.has("black_ice") and state.iced and state.poisoned and state.p_hits%3==0 and state.shield<6:state.shield=mini(6,state.shield+2);result["effect"]="BLACK ICE SHIELD";result["combo_element"]="black_ice"
+		if relics.has("black_ice") and state.iced and state.poisoned and state.p_hits%3==0 and state.shield<6:Flow.add_shield(state,2,6,"black_ice");result["effect"]="BLACK ICE SHIELD";result["combo_element"]="black_ice"
 		if relics.has("leech") and state.p_hits % 3 == 0:
 			result.heal = mini(2, state.max_hp - state.hp)
 			state.hp += result.heal
@@ -225,7 +225,7 @@ static func step(state: Dictionary) -> Dictionary:
 		if dodged:dealt=0;result["evaded"]=true;result["effect"]="EVADE"
 		elif state.get("guard",false):dealt=0;state["guard"]=false
 		elif int(state.get("shield",0))>0:
-			var absorbed=mini(dealt,int(state.shield));dealt-=absorbed;state.shield-=absorbed
+			dealt=Flow.absorb_shield(state,dealt,result)
 		if e.get("affix","")=="venomous" and state.e_hits==1 and not interrupted and not dodged:
 			if state.get("hex_guard",false):state.hex_guard=false;result["effect"]="HEX RESISTED"
 			else:state.wound=3;result["effect"]="HEXFANG"

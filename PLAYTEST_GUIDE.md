@@ -1,81 +1,46 @@
-# MagicDungeon — playtest guide
+# MagicDungeon playtest guide
 
-## Before testing
-
-Use a fresh character and the same build of the game for all testers. Ask three to five people who have not worked on the game to play two or three attempts, or until they would naturally stop. Do not use an edited save. Record the build, platform and whether the character is new. Keep each tester's report private unless they agree to share it.
-
-The purpose is to learn whether players can find their way, make satisfying choices and want another run. A small group can reveal repeated problems; it cannot prove long-term replayability or balance.
+Use build 0.17.0, a fresh character, and Standard Dungeon expeditions. Daily and Endless are temporarily unavailable. Ask three to five people unfamiliar with the project to play three attempts or stop naturally. Observe quietly; record every intervention. Human sessions have not yet been conducted as part of this implementation.
 
 ## Player brief
 
-Explore the dungeon, find equipment, fight enemies and spend the embers you earn between runs. You can stop whenever you wish. There is no need to finish a run.
+Explore, choose fights and rewards, and bring materials and discoveries back to the Hearth. Craft and equip your next expedition there. You can return early and can stop playing whenever you wish. Say what you expect a choice to do.
 
-Please say what you expect to happen when you make a decision. If you encounter a bug, note what you were doing and, if possible, export a report from Settings.
+## First-session observations
 
-## Observer checklist
+- Can the player inspect the starting Sword and explain its ability? Do the optional journey prompts help, and can they skip them?
+- After their first floor-1 victory, can they find the Dagger blueprint and materials, craft it at the Hearth, and equip it before the next expedition? Record minutes and completed attempts to first craft.
+- Can they explain which equipment is fixed for an expedition and which skills or elemental blessings can change inside it?
+- Can they identify a useful skill choice and explain its effect? Record any choice they believe cannot work with their weapon; confirm against the report.
+- Do they understand their tracked crafting goal and where its missing materials come from?
 
-Watch the first attempt quietly. Avoid explaining controls or systems unless the player cannot continue; note where they needed help.
+## Expedition observations
 
-### Purpose and permanent progress
+- Does inspection help decide whether to fight? After a death, can the player explain its cause from the recap?
+- Can they follow the weapon trigger indicator, major-event banner and shield/healing feedback? Does 2x playback remain readable? Do they notice the reset to 1x at low health?
+- Can they explain the choice at an expedition reward site and choose among a compatible skill, elemental blessing and flask?
+- Do floors feel distinct? Record the family, preparation site and elemental route they notice. Can they explain the preparation-versus-supplies choice?
+- Do they find their way back from a side passage and locate the Warden and exit?
+- After a Warden, does the safe-return bonus influence their choice to leave or descend? Can they explain what is retained after death?
+- Record fights that feel too long, too easy or unfair, with seed, floor, weapon, enemy and approximate HP lost.
 
-- Before the first run, do they notice the Hearth and understand why they enter the dungeon?
-- Can they find a sanctuary discovery, understand what will return after the run, and locate its reward in the Hearth afterward?
-- Does a Warden fragment feel meaningful? Do the journal clues make the player curious to descend again?
-- After Mara returns, do players discover the weapon choice in an armory passage? After Iven returns, do they notice adjacent chest tiers on the map?
-- When a manuscript returns, can players identify the advanced skill and elemental equipment bonus it enables on a future run?
-- Does the final choice feel understandable and like a satisfying ending?
+## Between attempts
 
-### First 15 minutes
-
-- Can they open the starting chest, understand the random weapon they found, and equip it using the pickup window? Do the Worn and Found values make sense?
-- Does the first-time tutorial help them inspect an enemy, understand its important stats, fight and find a healing flask?
-- Do they notice their HP, flasks, embers and iron when these become relevant?
-- Can they explain why a fight was safe or dangerous? Can they identify what caused their first death?
-- Do they notice a level-up, understand that they must choose one option, and discover the details on hover or keyboard focus?
-- Can they find their total stats and skills in Your Build? Can they distinguish an item's own stats from its effect on their total build?
-
-### Exploration and build choices
-
-- Which weapon did they find, and how did it affect their plan? Did they change their approach after finding another weapon?
-- Which element or weapon style did they try to build around? Could they explain why they selected their upgrades?
-- Did they notice the side passage in the starting room? Which route did they choose, why, and did its reward match their expectations? Could they return to the main dungeon?
-- Did exploration offer meaningful choices, or did rooms and encounters start feeling similar? Record specific rooms, decisions and moments.
-- Did they find a guardian chest, a rest site and a forge? Could they tell what each did without help?
-- At a forge, could they find the equipment-screen actions and explain what upgrading, scrapping or adding a bonus would cost and change?
-- Did a lucky item or a healing effect make later decisions irrelevant? Record the item, floor and build before drawing balance conclusions.
-- When did a fight feel especially satisfying, too easy, too long or unfair? Note the floor, enemy, weapon and approximate health lost.
-- Were there blocked routes, unclear messages, unresponsive controls, saves that failed to resume, or other bugs?
-
-### Between runs
-
-- Can they explain what they earned and why the run ended?
-- Do they notice the Ember Tree, understand a potential purchase and decide what to buy?
-- Do they start another run without prompting? What would they try differently?
+Ask what returned home, what they intend to craft or upgrade, and what they would change next time. Observe whether they start another expedition without prompting. On later sessions, try different base weapons and crafted families; avoid explaining their strengths beforehand. Use an established character only in a separate, clearly labelled session.
 
 ## Questions after play
 
-1. Which moment made you feel strongest? What choices led to it?
-2. Which decision felt most interesting? Which felt confusing or unimportant?
-3. What did you want to find while exploring? Did the dungeon give you ways to pursue it?
-4. Did any weapon, skill or enemy change how you approached a fight?
-5. Did the runs feel different enough? What repeated sooner than you wanted?
-6. When did you want to stop? Would you play another run, and what would you try?
-7. What would you remove or simplify?
+1. Which moment felt strongest, and which choices led to it?
+2. Which choice was interesting or confusing? Give an example.
+3. What did you want to find, and could you pursue it?
+4. Which weapon or enemy changed your approach?
+5. When did you want to stop, and would you start another run?
+6. What would you remove or simplify?
 
-Ask for specific examples rather than only asking whether the game was fun.
+## Session record
 
-## Record for each tester
+Record build/platform, character freshness, session minutes, attempts, first-craft time, weapons, tree investment, furthest floor, returns/deaths/victories, observer interventions, confusing choices, repeated content, and voluntary replay intent. Include bug reproduction steps and the seed.
 
-- Build / operating system:
-- New character and number of attempts:
-- Approximate play time and furthest floor:
-- Starting weapon and main build for each run:
-- Ember Tree investment:
-- Most satisfying and most confusing moments:
-- First death and the player's explanation:
-- Repeated rooms, rewards or choices:
-- Would they voluntarily start another run? Why?
-- Bugs and reproduction steps:
-- Optional local JSON report, shared only with the tester's consent:
+In Settings, open the help category and choose **Export playtest report**. Reports stay in the local game data folder under `playtests`; nothing is uploaded. Ask before sharing a tester's report. It includes progression, equipment, decisions and encounter outcomes without a character name. Export after each attempt before history truncation loses earlier attempts.
 
-The player can export a local report from Settings. Record the seed and floor from that report if available. After testing, group repeated observations, fix the most disruptive issue and test again. Avoid changing several balance variables at once.
+Group repeated observations before tuning. Prioritize blocked progress and misleading choices, then time to first craft, combat clarity and reasons to replay. Change one balance variable at a time and repeat the same seed plus a new seed. A small sample reveals usability issues; it does not establish population win rates.

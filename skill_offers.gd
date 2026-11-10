@@ -5,35 +5,49 @@ const EPIC=["steamglass","corrosive_flame","black_ice","toxic_spark","unbound_ai
 const HEAVY_NEW=["breakthrough","frost_shatter"]
 const SPECIALIZED=["combustion","toxic_harvest","exposed_core"]
 const NEW=["glacial_crusher","venom_edge","caustic_burn","frozen_precision","blood_harvest","shieldbreaker","warded_blade","ashen_charge","toxic_glacier"]
+const REQUIREMENTS={
+ "heavy_momentum":["heavy"],"combustion":["heavy","fire4"],"toxic_harvest":["poison4"],"exposed_core":["acid4"],
+ "glacial_crusher":["heavy","ice"],"venom_edge":["dagger","poison"],"caustic_burn":["fire","acid"],
+ "frozen_precision":["ice"],"blood_harvest":["poison","vampirism"],"shieldbreaker":["heavy"],
+ "warded_blade":["sword"],"ashen_charge":["fire"],"toxic_glacier":["poison"],
+ "breakthrough":["heavy"],"frost_shatter":["heavy","ice"]}
+const FIXED_REQUIREMENTS=["heavy","dagger","sword","vampirism"]
+const TRAINING=["attack","guard","fire","ice","acid","poison"]
+const GENERAL_SKILLS=["precision","ruin","leech","ward","bloom","spark"]
+const REQUIREMENT_LABELS={"heavy":"axe or greatblade","fire":"Fire","ice":"Frost","acid":"Acid","poison":"Poison","fire4":"4 Fire power","poison4":"4 Poison power","acid4":"4 Acid power"}
 static func rarity(id: String) -> String:
  return "Epic" if id in EPIC else "Rare" if id in RARE else "Common"
-# Offer eligibility deliberately permits future-facing choices. This describes what
-# the current build still needs, without hiding an offer or changing combat rules.
-static func build_requirements(g,id: String,totals: Dictionary) -> Array:
- var requirements={
-  "heavy_momentum":["heavy"],"combustion":["heavy","fire4"],"toxic_harvest":["poison4"],"exposed_core":["acid4"],
-  "glacial_crusher":["heavy","ice"],"venom_edge":["dagger","poison"],"caustic_burn":["fire","acid"],
-  "frozen_precision":["ice"],"blood_harvest":["poison","vampirism"],"shieldbreaker":["heavy"],
-  "warded_blade":["sword"],"ashen_charge":["fire"],"toxic_glacier":["poison"],
-  "breakthrough":["heavy"],"frost_shatter":["heavy","ice"]}
- if not requirements.has(id):return []
+# The same requirements drive offer eligibility and the preview's missing-build text.
+static func missing_requirements(g,id: String,totals: Dictionary) -> Array:
  var idx=int(g.equipped.get("weapon",-1));var weapon=str(g.inventory[idx].get("archetype","unarmed")) if idx>=0 and idx<g.inventory.size() else "unarmed"
  var e=totals.get("element_totals",{});var build=totals.get("build",{});var rules=preload("res://element_rules.gd");var missing=[]
- for requirement in requirements[id]:
+ for requirement in REQUIREMENTS.get(id,[]):
   match requirement:
-   "heavy":if weapon not in ["axe","greatblade"]:missing.append("axe or greatblade")
-   "dagger":if weapon!="dagger":missing.append("dagger")
-   "sword":if weapon!="balanced":missing.append("sword")
+   "heavy":if weapon not in ["axe","greatblade"]:missing.append(requirement)
+   "dagger":if weapon!="dagger":missing.append(requirement)
+   "sword":if weapon!="balanced":missing.append(requirement)
    "fire","ice","acid","poison":
-    if float(e.get(requirement,0))<=0:missing.append({"fire":"Fire","ice":"Frost","acid":"Acid","poison":"Poison"}[requirement])
+    if float(e.get(requirement,0))<=0:missing.append(requirement)
    "fire4","poison4","acid4":
     var element=requirement.trim_suffix("4")
-    if rules.element_power(build,element)<4:missing.append("4 "+element.capitalize()+" power")
+    if rules.element_power(build,element)<4:missing.append(requirement)
    "vampirism":if float(totals.get("vampirism",0))<=0:missing.append("vampirism")
  return missing
+static func build_requirements(g,id: String,totals: Dictionary) -> Array:
+ var result=[]
+ for requirement in missing_requirements(g,id,totals):result.append(REQUIREMENT_LABELS.get(requirement,requirement))
+ return result
+static func requirement_note(id: String) -> String:
+ var labels=[]
+ for requirement in REQUIREMENTS.get(id,[]):labels.append(REQUIREMENT_LABELS.get(requirement,requirement))
+ return " + ".join(labels)
 static func has_build_requirement(id: String) -> bool:
- return id in ["heavy_momentum","combustion","toxic_harvest","exposed_core","glacial_crusher","venom_edge","caustic_burn","frozen_precision","blood_harvest","shieldbreaker","warded_blade","ashen_charge","toxic_glacier","breakthrough","frost_shatter"]
+ return REQUIREMENTS.has(id)
 static func eligible(g,id: String,totals: Dictionary) -> bool:
+ if g.run_rules>=20:
+  for requirement in missing_requirements(g,id,totals):
+   if requirement in FIXED_REQUIREMENTS:return false
+  return true
  var weapon=str(totals.get("build",{}).get("weapon",""))
  # BuildStats derives the equipped archetype independently of the UI.
  var index=int(g.equipped.get("weapon",-1))
@@ -90,7 +104,7 @@ static func choose(g,excluded: Array=[]) -> Array:
   if bucket.is_empty():bucket=candidates.duplicate()
   var picked=bucket[g.rng.randi_range(0,bucket.size()-1)];result.append(picked);candidates.erase(picked)
  if g.run_rules>=18 and not result.is_empty():
-  var fallback=["precision","ruin","leech","ward","bloom","spark"]
+  var fallback=GENERAL_SKILLS
   var found=false
   for id in result:
    if id in fallback:found=true
@@ -99,4 +113,28 @@ static func choose(g,excluded: Array=[]) -> Array:
    for id in candidates:
     if id in fallback:available.append(id)
    if not available.is_empty():result[result.size()-1]=available[g.rng.randi_range(0,available.size()-1)]
+ if g.run_rules>=20:
+  # Exhausted skill pools still grant a useful level; blessings are repeatable.
+  if not result.any(func(id):return id in GENERAL_SKILLS):
+   var useful="guard" if "attack" in excluded else "attack"
+   if result.size()==count:result[result.size()-1]=useful
+   else:result.append(useful)
+  var training=[]
+  for id in TRAINING:
+   if id not in result and id not in excluded:training.append(id)
+  for id in TRAINING:
+   if id not in result and id not in training:training.append(id)
+  while result.size()<count and not training.is_empty():result.append(training.pop_front())
  return result
+
+static func repair_saved_choices(g) -> bool:
+ if g.run_rules<20:return false
+ var totals=preload("res://build_stats.gd").calculate(g);var changed=false
+ var replacements=pool(g)+TRAINING
+ for i in range(g.choices.size()):
+  var id=str(g.choices[i])
+  if id in TRAINING or (g.RELICS.has(id) and eligible(g,id,totals)):continue
+  for replacement in replacements:
+   if replacement not in g.choices:
+    g.choices[i]=replacement;changed=true;break
+ return changed

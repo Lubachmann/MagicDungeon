@@ -1,4 +1,5 @@
 extends SceneTree
+# Saved rules 18 contract; current expeditions are covered by the Hearth suites.
 const Gear=preload("res://equipment.gd")
 const Roster=preload("res://enemy_roster.gd")
 var failures=[]
@@ -22,7 +23,7 @@ func run() -> void:
  g.session.enabled=false;g.set_process(false);g.muted=true;g.skills={}
  var types={};var seen_levels={};var guard_min=99;var min_xp=999999;var max_xp=0
  for seed_value in range(200):
-  g.new_run(seed_value)
+  preload("res://tools/historical_run.gd").start(g,seed_value,18)
   var data=g.rooms[Vector2i.ZERO];var chest=data.entities[data.chest];var item=chest.item
   check(g.inventory.is_empty(),"Player starts unarmed")
   check(chest.kind=="chest" and item.slot=="weapon" and item.level==1 and item.rarity==0 and item.affixes.is_empty() and item.get("plain",false),"Starting chest contains one plain common weapon")
@@ -63,15 +64,15 @@ func run() -> void:
  var legacy=shield.duplicate(true);legacy.balance=6
  check(is_equal_approx(Gear.stats(legacy).armor,1.5),"Old equipment keeps its previous formula")
  for rank in range(4):
-  g.skills={"smithcraft":rank};g.new_run(102)
+  g.skills={"smithcraft":rank};preload("res://tools/historical_run.gd").start(g,102,18)
   var starter=g.rooms[Vector2i.ZERO].entities[g.rooms[Vector2i.ZERO].chest].item
   check(starter.slot=="weapon" and starter.level==(2 if rank>=2 else 1) and starter.rarity==(0 if rank==0 else 2 if rank>=3 else 1),"Quartermaster upgrades the random starting weapon at rank %d"%rank)
- g.skills={};g.new_run(103);g.run_rules=14;g.generate_floor()
+ g.skills={};preload("res://tools/historical_run.gd").start(g,103,18);g.run_rules=14;g.generate_floor()
  var legacy_cache=false
  for e in g.rooms[Vector2i.ZERO].entities.values():
   if e.kind=="build_cache" and e.get("basic",false):legacy_cache=true
  check(legacy_cache,"Saved runs on old rules retain the original opening")
- g.new_run(91);g.hp=40;g.gain_xp(40)
+ preload("res://tools/historical_run.gd").start(g,91,18);g.hp=40;g.gain_xp(40)
  check(g.character_level==2 and g.max_hp==88 and g.hp==48,"Level up increases max HP and heals the increase")
  g.session.enabled=true;g.session.active=true
  check(g.session.checkpoint() and g.session.continue_run() and g.run_rules==18 and g.character_level==2,"New rules and level survive save and continue")

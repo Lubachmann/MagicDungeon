@@ -5,7 +5,7 @@ func check(ok:bool,msg:String):
 func _initialize():call_deferred("run")
 func run():
  var g=load("res://main.tscn").instantiate();g.save_path="/private/tmp/blueprint-progression";root.add_child(g);await process_frame;g.session.enabled=false;g.set_process(false);g.career=g.replay.new_career();g.new_run(131)
- check(g.smithy.RECIPES.size()==40 and g.smithy.VARIANTS.size()==30,"Catalogue contains all base and variant blueprints")
+ check(g.smithy.RECIPES.size()==45 and g.smithy.VARIANTS.size()==30 and g.smithy.SPECIALS.size()==5,"Catalogue contains base, family and special weapon blueprints")
  var sword=g.make_gear("weapon",1,2,[],"balanced");g.floor_number=1
  g.smithy.reward(sword);check(g.smithy.cargo().blueprints.is_empty(),"Floor 1 cannot roll later-floor variants")
  for f in [2,3,4]:

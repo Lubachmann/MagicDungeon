@@ -1,4 +1,5 @@
 extends SceneTree
+# Saved rules 18 contract; current expeditions are covered by the Hearth suites.
 const Stats=preload("res://build_stats.gd")
 const Pace=preload("res://combat_pacing.gd")
 const Offers=preload("res://skill_offers.gd")
@@ -9,7 +10,7 @@ func check(ok:bool,why:String):
  if not ok:failures.append(why)
 func _initialize():call_deferred("run")
 func run():
- var g=load("res://main.tscn").instantiate();g.save_path="/private/tmp/magic-commitment-test";root.add_child(g);await process_frame;g.session.enabled=false;g.set_process(false);g.new_run(72)
+ var g=load("res://main.tscn").instantiate();g.save_path="/private/tmp/magic-commitment-test";root.add_child(g);await process_frame;g.session.enabled=false;g.set_process(false);preload("res://tools/historical_run.gd").start(g,72,18)
  check(g.run_rules==18,"New runs use the commitment balance")
  g.inventory=[g.make_gear("weapon",1,0,[],"dagger")];g.equipped={"weapon":0};g.character_level=1;g.recalculate_stats()
  var d0=Stats.calculate(g);var d1=Stats.upgrade_preview(g,"haste")

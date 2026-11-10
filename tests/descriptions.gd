@@ -14,8 +14,8 @@ func lines(value: String,font: Font,size: int,width: float) -> int:
 func run() -> void:
 	var g=load("res://main.tscn").instantiate();g.save_path="res://tests/.copycheck.json";root.add_child(g);preload("res://tools/test_equipment.gd").arm(g);await process_frame;g.session.enabled=false;g.new_run(42);preload("res://tools/test_equipment.gd").arm(g);g.set_process(false)
 	g.skills={"treasure_hunter":3,"gilded_touch":2};g.run_skills={}
-	var rare=float(g.CHEST_ODDS[0][1])+4.5
-	check(g.ember_tree.describe("treasure_hunter").contains("%.1f%% → %.1f%%"%[rare,rare+1.5]),"Prospector previews purchased ranks, not the previous run snapshot")
+	var rare=9.0
+	check(g.ember_tree.describe("treasure_hunter").contains("%d%% → %d%%"%[rare,rare+3.0]),"Prospector previews purchased ranks, not the previous run snapshot")
 	for id in g.ember_tree.NODES:
 		var text=g.ember_tree.describe(id)
 		check(not text.contains("percentage") and not text.contains("potency"),"Tree uses plain numbers: "+id)

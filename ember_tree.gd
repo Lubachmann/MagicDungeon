@@ -17,7 +17,7 @@ const NODES={
 	"ruin_training":{"name": "Ruin", "branch": 1, "parent": "precision_training", "icon": "crit_damage", "costs": [50, 72, 98, 126, 159, 194, 234, 276, 323, 372], "effect": "+3% critical damage per rank.", "cell": Vector2i(1,1)},
 	"tinkering":{"name": "Tinkering", "branch": 1, "parent": "might", "icon": "iron", "costs": [75], "effect": "+1 ore from the first iron pickup each floor.", "cell": Vector2i(0,2)},
 	"runeforge":{"name": "Rune Forge", "branch": 1, "parent": "tinkering", "icon": "fire", "costs": [180], "effect": "Reduce the ore cost of smithy rune infusions by 1, to a minimum of 1. Find elemental rune blueprints in elemental passages.", "cell": Vector2i(1,2)},
-	"smithcraft":{"name": "Quartermaster", "branch": 1, "parent": "runeforge", "icon": "hammer", "costs": [220, 550, 1050], "effect": "+1 ore at the start of each expedition per rank.", "cell": Vector2i(0,3)},
+	"smithcraft":{"name": "Quartermaster", "branch": 1, "parent": "runeforge", "icon": "hammer", "costs": [220, 550, 1050], "effect": "+1 bonus ore per rank from the first deposit mined each expedition.", "cell": Vector2i(0,3)},
 	"salvage_master":{"name": "Scrapper", "branch": 1, "parent": "runeforge", "icon": "salvage", "costs": [160, 360, 760], "effect": "+1 ore from mining deposits per rank.", "cell": Vector2i(1,3)},
 	"cartography":{"name": "Cartography", "branch": 2, "parent": "kindling", "icon": "map", "costs": [40], "effect": "Show the room types next to rooms you have visited.", "cell": Vector2i(0,0)},
 	"treasure_hunter":{"name": "Prospector", "branch": 2, "parent": "cartography", "icon": "key", "costs": [35, 49, 64, 83, 103, 126, 152, 180, 210, 243], "effect": "+3% chance per rank for chests to yield 2 extra ore.", "cell": Vector2i(1,0)},
@@ -34,7 +34,7 @@ const NODES={
 	"insight":{"name": "Insight", "branch": 3, "parent": "kindling", "icon": "book", "costs": [350], "effect": "Choose from 4 level-up upgrades instead of 3.", "cell": Vector2i(0,2)},
 	"transmutation":{"name": "Fortune", "branch": 3, "parent": "kindling", "icon": "relic", "costs": [260], "effect": "+10% chance for a Rare skill in each level-up choice, when available.", "cell": Vector2i(1,2)},
 	"convergence":{"name": "Convergence", "branch": 3, "parent": "insight", "icon": "relic", "costs": [500], "effect": "+10% chance for an Epic skill in each level-up choice, when available.", "cell": Vector2i(0,3)},
-	"blastcraft":{"name": "Iron Cache", "branch": 3, "parent": "poison_mastery", "icon": "iron", "costs": [140, 360, 780], "effect": "+1 ore at the start of each expedition per rank.", "cell": Vector2i(1,3)},
+	"blastcraft":{"name": "Iron Cache", "branch": 3, "parent": "poison_mastery", "icon": "iron", "costs": [140, 360, 780], "effect": "+1 bonus ore per rank from the first deposit mined each expedition.", "cell": Vector2i(1,3)},
 }
 const OLD_COSTS={"kindling":[4],"vigor":[6,10,14],"cartography":[6],"tinkering":[6],"flaskcraft":[12],"runic_sight":[14],"relic_lens":[14],"second_wind":[30],"recall":[18],"runeforge":[22]}
 var g
@@ -159,7 +159,7 @@ func draw() -> void:
 func describe(id: String) -> String:
 	var level=rank(id,false);var next=mini(NODES[id].costs.size(),level+1)
 	# The values below match the current run rules and show the actual cumulative bonus.
-	var linear={"vigor":[3.0,"max HP"],"armor_training":[0.6,"armor"],"might":[0.7,"character attack"],"precision_training":[1.0,"% crit chance"],"wellkeeper":[3.0,"HP from fountains"],"field_medicine":[2.0,"HP per flask"],"recovery":[1.0,"HP after victory"],"flask_reserve":[1.0,"starting flasks"],"salvage_master":[1.0,"ore per deposit"],"smithcraft":[1.0,"starting ore"],"blastcraft":[1.0,"starting ore"],"embercraft":[2.0,"% embers kept"],"supply_cache":[2.0,"% flask drop chance"],"relic_lens":[1.0,"rerolls per floor"],"fire_mastery":[5.0,"% fire damage"],"acid_mastery":[5.0,"% acid effect"],"ice_mastery":[5.0,"% frost effect"],"poison_mastery":[5.0,"% poison effect"],"kindling":[4.0,"max HP"],"transmutation":[10.0,"% rare offer chance"],"convergence":[10.0,"% epic offer chance"]}
+	var linear={"vigor":[3.0,"max HP"],"armor_training":[0.6,"armor"],"might":[0.7,"character attack"],"precision_training":[1.0,"% crit chance"],"wellkeeper":[3.0,"HP from fountains"],"field_medicine":[2.0,"HP per flask"],"recovery":[1.0,"HP after victory"],"flask_reserve":[1.0,"starting flasks"],"salvage_master":[1.0,"ore per deposit"],"smithcraft":[1.0,"ore at first deposit"],"blastcraft":[1.0,"ore at first deposit"],"embercraft":[2.0,"% embers kept"],"supply_cache":[2.0,"% flask drop chance"],"relic_lens":[1.0,"rerolls per floor"],"fire_mastery":[5.0,"% fire damage"],"acid_mastery":[5.0,"% acid effect"],"ice_mastery":[5.0,"% frost effect"],"poison_mastery":[5.0,"% poison effect"],"kindling":[4.0,"max HP"],"transmutation":[10.0,"% rare offer chance"],"convergence":[10.0,"% epic offer chance"]}
 	if id in linear:
 		var stat=linear[id];var old_value=float(stat[0])*level;var new_value=float(stat[0])*next
 		return "+%.1f → +%.1f %s. %s"%[old_value,new_value,stat[1],NODES[id].effect]

@@ -48,18 +48,18 @@ func draw_title() -> void:
 	if g.session.has_run():
 		var state=g.session.cached.state
 		g.text(Vector2(612,255),"Floor %d / Lv %d / %d HP"%[state.floor_number,state.character_level,state.hp],16,g.TEAL)
-	icon_button(Rect2(535,290,650,104),"attack","New expedition","expedition")
+	icon_button(Rect2(535,290,650,104),"ember","Visit the Hearth","sanctuary")
 	icon_button(Rect2(535,415,315,86),"hammer","Smithy","smithy_open")
 	icon_button(Rect2(870,415,315,86),"health","Characters","profiles")
 	icon_button(Rect2(535,520,315,86),"ember","Ember Tree","skills")
 	icon_button(Rect2(870,520,315,86),"map","Settings","settings")
-	icon_button(Rect2(535,630,200,64),"ember","Hearth","sanctuary")
+	icon_button(Rect2(535,630,200,64),"attack","Expedition","expedition")
 	icon_button(Rect2(760,630,200,64),"book","Chronicle","codex")
 	icon_button(Rect2(985,630,200,64),"moon","Quit","quit")
 	g.ui_icon("ember",Vector2(95,690),32);g.text(Vector2(140,719),str(g.bank),27,g.GOLD)
 	g.ui_icon("sun",Vector2(280,690),32);g.text(Vector2(325,719),str(g.career.wins),27,g.TEAL)
 	g.text(Vector2(75,800),"Arrows / D-pad     Enter / A",17)
-	if Rect2(535,630,200,64).has_point(g.design_mouse()):g.text(Vector2(535,735),"Visit the sanctuary",19,g.TEAL)
+	if Rect2(535,290,650,104).has_point(g.design_mouse()):g.text(Vector2(535,735),"Craft, prepare and choose your next goal",19,g.TEAL)
 	if g.session.error!="":g.draw_wrapped(g.session.error,Vector2(535,760),650,18,Color("ee9b88"),2)
 func draw_confirm_new() -> void:
 	menu_backdrop();g.panel(Rect2(260,220,760,410))
@@ -145,7 +145,7 @@ func draw_controls() -> void:
 		g.button(Rect2(at+Vector2(375,0),Vector2(65,48)),"Reset","bind_reset:"+name,false,name!="pause")
 		i+=1
 	g.text(Vector2(185,601),"Controller: stick/D-pad move | A confirm / gear | B back | Start pause",20)
-	g.text(Vector2(185,633),"X inspect | Y map | LB flask. Combat resolves automatically.",20)
+	g.text(Vector2(185,633),"X inspect | Y map | LB flask | A in combat: 1x / 2x.",20)
 	g.button(Rect2(185,680,440,48),"Restore default bindings","reset_bindings")
 	g.button(Rect2(655,680,440,48),"Back","controls_back")
 func draw_shrine() -> void:

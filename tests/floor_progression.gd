@@ -1,11 +1,12 @@
 extends SceneTree
+# Saved rules 18 contract; current expeditions are covered by the Hearth suites.
 const Combat=preload("res://combat.gd")
 var failures=[]
 func check(ok: bool,message: String):
  if not ok:failures.append(message)
 func _initialize():call_deferred("run")
 func run():
- var g=load("res://main.tscn").instantiate();g.save_path="/private/tmp/magic-floor-progression";root.add_child(g);await process_frame;g.session.enabled=false;g.set_process(false);g.muted=true;g.skills={};g.new_run(77)
+ var g=load("res://main.tscn").instantiate();g.save_path="/private/tmp/magic-floor-progression";root.add_child(g);await process_frame;g.session.enabled=false;g.set_process(false);g.muted=true;g.skills={};preload("res://tools/historical_run.gd").start(g,77,18)
  check(g.run_rules==18,"New runs use new progression rules")
  var floor_data=[];var previous={}
  for floor_number in range(1,6):

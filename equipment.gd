@@ -133,6 +133,16 @@ static func modern_stats(item: Dictionary) -> Dictionary:
 				"keen":result.crit_mult=float(result.get("crit_mult",0))+0.05
 				"swift":result.evade=float(result.get("evade",0))+0.015
 				"bloodbound":result.health=float(result.get("health",0))+3.0
+	# Versioned crafted weapon families leave saved expedition items unchanged.
+	if item.slot=="weapon" and int(item.get("family_revision",1))>=2:
+		match style:
+			"keen":
+				result.crit_chance=float(result.get("crit_chance",0))-(0.03+0.003*n)+(0.05+0.005*n)
+				result.crit_mult=float(result.get("crit_mult",0))-0.05+(0.30+0.025*n)
+			"swift":result.speed=float(result.get("speed",0))-(0.035+0.006*n)+(0.12+0.01*n)
+			"bloodbound":
+				result.attack=result.attack/mult/(1.0 if archetype=="dagger" else 0.8)*0.90
+				result.vampirism=float(result.get("vampirism",0))-(0.035+0.0015*n)*strength+(0.06+0.005*n)
 	var infusion=item.get("infusion","")
 	var runes={"fire":["fire_dps",0.6+0.18*n],"ice":["ice_slow",0.035+0.004*n],"acid":["acid_strip",0.4+0.12*n],"poison":["poison_weak",0.035+0.004*n],"focus":["crit_chance",0.025+0.002*n],"ruin":["crit_mult",0.10+0.015*n],"veil":["evade",0.025+0.001*n],"blood":["vampirism",0.025+0.001*n]}
 	if runes.has(infusion):var pair=runes[infusion];result[pair[0]]=float(result.get(pair[0],0))+float(pair[1])

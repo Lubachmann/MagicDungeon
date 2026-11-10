@@ -81,7 +81,7 @@ func navigate_spatial(direction: Vector2i) -> void:
 	g.menu_keyboard=true
 func confirm() -> void:
 	if g.mode=="relic" and g.choice_ui and not g.choice_ui.level_ready():g.choice_ui.skip_level_intro();return
-	if g.mode=="fight":return
+	if g.mode=="fight":g.action("combat_speed_toggle");return
 	if g.mode=="play":g.action("equipment");return
 	if g.mode=="bomb":g.throw_bomb(g.inspected_tile);return
 	if not g.buttons.is_empty():g.action(g.buttons[clampi(g.session.focused,0,g.buttons.size()-1)].id)
@@ -181,7 +181,9 @@ func handle(event: InputEvent) -> bool:
 		elif event.keycode==KEY_BACKSPACE:g.replay.codex_search=g.replay.codex_search.left(maxi(0,g.replay.codex_search.length()-1));g.replay.codex_list_page=0
 		elif event.unicode>=32 and g.replay.codex_search.length()<24:g.replay.codex_search+=char(event.unicode);g.replay.codex_list_page=0
 		return true
-	if capture=="" and event.keycode==KEY_F1 and g.guided and g.guided.active():g.action("guide_skip");return true
+	if capture=="" and event.keycode==KEY_F1:
+		if g.guided and g.guided.active():g.action("guide_skip");return true
+		if not preload("res://early_journey.gd").info(g).is_empty():g.action("journey_skip");return true
 	if capture=="" and g.mode=="play" and direction_for(event.keycode)!=Vector2i.ZERO:
 		held_keys.erase(event.keycode);held_keys.append(event.keycode);repeat_left=0.24
 		g.menu_keyboard=true;step(direction_for(event.keycode));return true

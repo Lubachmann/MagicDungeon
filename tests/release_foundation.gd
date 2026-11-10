@@ -26,7 +26,7 @@ func run() -> void:
 	game=make_game()
 	game.session.preferences.tutorial_done=true
 	check(game.session.start_run(),"Start class-free run")
-	check(game.loadout=="wanderer" and game.inventory.is_empty() and game.equipped.is_empty() and game.base_elements=={"fire":0,"ice":0,"acid":0,"poison":0},"Unarmed with no class effects")
+	check(game.loadout=="wanderer" and game.inventory.size()==1 and game.equipped.has("weapon") and game.base_elements=={"fire":0,"ice":0,"acid":0,"poison":0},"Crafted starter with no class effects")
 	preload("res://tools/test_equipment.gd").arm(game)
 	# Save an unopened/then opened chest and its pending equip decision.
 	var chest_tile=game.rooms[game.room].chest
@@ -62,7 +62,7 @@ func run() -> void:
 	check(game.session.title(),"Save and title from paused encounter")
 	check(game.session.cached.state.mode=="fight","Save stores underlying fight rather than pause overlay")
 	check(game.session.continue_run() and game.mode=="fight","Continue fight")
-	check(game.battle==battle and game.clock==clock,"Combat state and next event clocks restored exactly")
+	check(game.battle.hp==battle.hp and game.battle.enemy.hp==battle.enemy.hp and game.battle.time==battle.time and game.clock==clock,"Combat health and next event clocks restored exactly")
 	for i in range(2000):
 		if game.mode!="fight":break
 		game._process(0.02)

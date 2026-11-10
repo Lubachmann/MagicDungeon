@@ -9,15 +9,14 @@ func run() -> void:
 	var g=load("res://main.tscn").instantiate();g.save_path="res://tests/.contextui.json";root.add_child(g);preload("res://tools/test_equipment.gd").arm(g);await process_frame;g.session.enabled=false;g.new_run(12);preload("res://tools/test_equipment.gd").arm(g);g.set_process(false)
 	g.mode="expedition";g.career.wins=0;g.replay.draft={"mode":"standard","vows":{}}
 	var rng_before=g.rng.state;g.action("run_mode:endless")
-	check(g.ui_help.topic=="endless" and g.replay.draft.mode=="standard","Locked Endless explains unlock without selecting it")
+	check(g.ui_help.topic=="" and g.replay.draft.mode=="standard","Endless action stays Standard")
 	check(g.rng.state==rng_before and g.mode=="expedition","Help leaves mode and world randomness unchanged")
-	var event=InputEventKey.new();event.pressed=true;event.keycode=KEY_ENTER;g._unhandled_input(event)
-	check(g.ui_help.topic=="" and g.mode=="expedition","Dismissing help does not trigger the background menu")
+	var event=InputEventKey.new();event.pressed=true;event.keycode=KEY_ENTER
 	g.action("vow:fury");check(g.ui_help.topic=="vows" and g.replay.draft.vows.is_empty(),"Locked Vows explain rather than altering difficulty")
 	g.action("help:close");g.career.wins=1;g.replay.draft.mode="daily";g.action("vow:iron")
 	check(g.ui_help.topic=="daily_vows" and g.replay.draft.vows.is_empty(),"Daily Vows have their own explanation")
 	g.action("help:close");g.replay.draft.mode="standard";g.action("vow:iron");check(g.replay.draft.vows.iron==1,"Unlocked Vows still work")
-	g.action("run_mode:endless");check(g.replay.draft.mode=="endless","Unlocked Endless still works")
+	g.action("run_mode:endless");check(g.replay.draft.mode=="standard","Endless stays unavailable after victory")
 	g.new_run(12);preload("res://tools/test_equipment.gd").arm(g);g.shards=123;g.mode="loot";g.inventory.append(g.Gear.make("weapon",3,2,["vampirism","speed"],"dagger"));g.last_loot_index=g.inventory.size()-1;g.last_chest_tier=2
 	g.queue_redraw();await process_frame;await process_frame
 	check(g.buttons.size()>=2 and g.buttons[-2].id=="loot_equip" and g.buttons[-1].id=="loot_keep", "Pickup offers equip and keep actions")

@@ -13,13 +13,18 @@ func unlocked(id: String) -> bool:return int(g.career.get("mastery",{}).get(GOAL
 func available(id: String) -> bool:return g.run_settings.get("mode","")=="daily" or unlocked(id)
 func add(metric: String,amount: int) -> void:
 	if amount<=0 or g.demo_run:return
+	if g.run_rules>=20 and g.run_settings.get("mode","")=="daily":return
 	if not g.career.has("mastery"):g.career["mastery"]=empty_progress()
 	var before=[]
 	for id in GOALS:
 		if unlocked(id):before.append(id)
 	g.career.mastery[metric]=int(g.career.mastery.get(metric,0))+amount
 	for id in GOALS:
-		if id not in before and unlocked(id):notice="Unlocked: "+GOALS[id].name+" / Build unlocks in Expedition";notice_left=7;g.log_line(notice)
+		if id not in before and unlocked(id):
+			var blueprint=g.run_rules>=20 and g.smithy and g.smithy.SPECIALS.has(id)
+			if blueprint:g.smithy.data()
+			notice=("Blueprint unlocked: "+GOALS[id].name+" / Craft at the Hearth" if blueprint else "Unlocked: "+GOALS[id].name+" / Build unlocks in Expedition")
+			notice_left=7;g.log_line(notice)
 func enemy_defeated(enemy: Dictionary,tile: Vector2i) -> void:
 	if g.mode!="fight" or g.fight.get("position",Vector2i(-1,-1))!=tile:return
 	var index=int(g.equipped.get("weapon",-1))
@@ -36,7 +41,7 @@ func roll_variant(item: Dictionary) -> Dictionary:
 func draw() -> void:
 	g.front_end.menu_backdrop();g.text(Vector2(75,82),"BUILD UNLOCKS",36,g.GOLD)
 	g.front_end.icon_button(Rect2(840,45,350,60),"relic","Relics","codex_next")
-	g.draw_wrapped("Earn new loot options by using builds. Unlocks do not change your starting character. Daily includes all variants for everyone.",Vector2(75,124),1100,19,g.INK,2)
+	g.draw_wrapped("Complete weapon masteries to unlock guaranteed smithy blueprints. Craft them at the Hearth. Practice expeditions do not advance mastery." if g.run_rules>=20 else "Earn new loot options by using builds. Unlocks do not change your starting character. Daily includes all variants for everyone.",Vector2(75,124),1100,19,g.INK,2)
 	var i=0
 	for id in GOALS:
 		var info=GOALS[id];var at=Vector2(75+(i%2)*580,185+(i/2)*245);g.panel(Rect2(at,Vector2(550,220)))
@@ -49,6 +54,7 @@ func draw() -> void:
 		if g.run_rules>=9 and id=="winterblade":reward="Level 1: +1 Frost power; 15% less item attack."
 		if g.run_rules>=9 and id=="caustic":reward="Level 1: +1 Acid power; 35% less Fire potency."
 		if g.run_rules>=9 and id=="bloodletter":reward="Level 1: +3.5% vampirism; loses innate dagger evade."
+		if g.run_rules>=20 and id!="draft_cache":reward="Blueprint / "+reward
 		g.draw_wrapped(reward,at+Vector2(20,190),510,18,g.INK,2);i+=1
 	g.front_end.icon_button(Rect2(75,730,250,60),"boots","Back","codex_back")
 func tick(delta: float) -> void:

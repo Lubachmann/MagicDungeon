@@ -15,5 +15,5 @@ func run():
  g.action("smithy_upgrade_slot:weapon");check(p.slot_levels.weapon==2,"Weapon slot can be upgraded")
  check(g.inventory[g.equipped.weapon].level==1,"Upgrading outside a run does not alter its equipment snapshot")
  p.loadout.weapon="axe";g.new_run(4);check(g.inventory[g.equipped.weapon].level==2,"New equipment inherits slot upgrades")
- g.replay.draft.mode="daily";g.new_run(5);check(g.inventory[g.equipped.weapon].level==1,"Daily fixed loadout ignores slot progression")
+ preload("res://tools/historical_run.gd").start_mode(g,5,"daily");check(g.inventory[g.equipped.weapon].level==1,"Daily fixed loadout ignores slot progression")
  print(JSON.stringify({"failures":failures}));g.free();quit(0 if failures.is_empty() else 1)

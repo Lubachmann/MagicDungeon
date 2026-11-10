@@ -1,7 +1,7 @@
 extends Node
 ## Separate footstep voice and a bounded effects pool allow overlapping cues.
 const EVENTS = ["step_a", "step_b", "swing", "hurt", "block", "door", "pickup", "equip", "break", "heal", "blessing", "relic", "victory", "death", "click", "error"]
-const CUES={"heavy_impact":["hurt",0.72,-5.0],"evade":["swing",1.8,-5.0],"critical":["swing",0.7,1.0],"guard_break":["break",0.8,0.0],"interrupt":["block",1.5,-2.0],"vamp":["heal",1.35,-6.0],"ward":["blessing",0.7,-4.0],"flare":["blessing",0.85,-1.0],"burn":["hurt",1.4,-9.0],"resonance":["relic",1.3,-5.0]}
+const CUES={"return_home":["door",0.85,0.0],"heavy_impact":["hurt",0.72,-5.0],"evade":["swing",1.8,-5.0],"critical":["swing",0.7,1.0],"guard_break":["break",0.8,0.0],"interrupt":["block",1.5,-2.0],"vamp":["heal",1.35,-6.0],"ward":["blessing",0.7,-4.0],"flare":["blessing",0.85,-1.0],"burn":["hurt",1.4,-9.0],"resonance":["relic",1.3,-5.0]}
 var streams: Dictionary = {}
 var voices: Array[AudioStreamPlayer] = []
 var footstep: AudioStreamPlayer

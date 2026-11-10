@@ -31,7 +31,7 @@ func run() -> void:
 	game.muted = true
 	var layouts: Dictionary = {}
 	for seed_value in range(200):
-		game.new_run(seed_value);preload("res://tools/test_equipment.gd").arm(game)
+		preload("res://tools/historical_run.gd").start(game,seed_value,6);preload("res://tools/test_equipment.gd").arm(game)
 		var data = game.rooms[game.boss_room]
 		check(not accessible(data,false,true).has(Vector2i(6,3)), "Vault sealed without ability or champion fight")
 		check(accessible(data,true,true).has(Vector2i(6,3)), "Hammer route reaches Warden")
@@ -43,7 +43,7 @@ func run() -> void:
 	# All elemental rank combinations, every enemy, multiple crit configurations.
 	for ranks in range(256):
 		for type in range(4):
-			game.new_run(50 + ranks);preload("res://tools/test_equipment.gd").arm(game)
+			preload("res://tools/historical_run.gd").start(game,50 + ranks,6);preload("res://tools/test_equipment.gd").arm(game)
 			game.elements = {"fire":ranks % 4, "ice":(ranks / 4) % 4, "acid":(ranks / 16) % 4, "poison":(ranks / 64) % 4}
 			for id in game.elements: game.elements[id] = int(game.elements[id])
 			game.crit_chance = (ranks % 7) * 0.1
@@ -105,20 +105,20 @@ func run() -> void:
 	var pre_phase = Combat.begin(boss,80,80,10,0,1,[])
 	check(pre_phase.rage, "Bomb-damaged boss begins enraged below half")
 	# Blessing options, caps and run resets.
-	game.new_run(15);preload("res://tools/test_equipment.gd").arm(game)
+	preload("res://tools/historical_run.gd").start(game,15,6);preload("res://tools/test_equipment.gd").arm(game)
 	for i in range(20):
 		for id in ["fire","ice","acid","poison","focus","ferocity"]: game.apply_blessing(id)
 	check(game.elements == {"fire":3,"ice":3,"acid":3,"poison":3} and game.crit_chance == 0.6 and game.crit_mult == 3.0, "Upgrade caps")
 	game.offer_blessing()
 	check(game.blessings.size() == 2 and "attack" in game.blessings and "guard" in game.blessings, "Capped upgrades excluded")
-	game.new_run(10);preload("res://tools/test_equipment.gd").arm(game)
+	preload("res://tools/historical_run.gd").start(game,10,6);preload("res://tools/test_equipment.gd").arm(game)
 	game.offer_blessing()
 	check(game.blessings.size() == 3, "Three distinct blessing choices")
 	var selected = game.blessings[2]
 	game.action("upgrade2")
 	check(game.mode == "play", "Third upgrade selectable")
 	# Bomb range, LOS, permanent enemy damage, forecast and kills.
-	game.new_run(1);preload("res://tools/test_equipment.gd").arm(game)
+	preload("res://tools/historical_run.gd").start(game,1,6);preload("res://tools/test_equipment.gd").arm(game)
 	game.rooms[game.room].walls.clear()
 	game.rooms[game.room].entities.clear()
 	game.rooms[game.room].entities[Vector2i(5,5)] = dummy()
@@ -141,7 +141,7 @@ func run() -> void:
 	game.rooms[game.room].entities[Vector2i(5,5)] = weak
 	game.throw_bomb(Vector2i(5,5))
 	check(not game.rooms[game.room].entities.has(Vector2i(5,5)) and game.kills == 1 and game.summary.dealt == 30, "Bomb kill rewards and damage summary")
-	game.new_run(2);preload("res://tools/test_equipment.gd").arm(game)
+	preload("res://tools/historical_run.gd").start(game,2,6);preload("res://tools/test_equipment.gd").arm(game)
 	check(game.elements.fire == 0 and game.crit_chance == 0.05 and game.crit_mult == 1.5 and game.bombs == 1 and game.summary.taken == 0, "Run powers and summary reset")
 	game.queue_free()
 	if FileAccess.file_exists("res://tests/.expansion-save.json"): DirAccess.remove_absolute(ProjectSettings.globalize_path("res://tests/.expansion-save.json"))

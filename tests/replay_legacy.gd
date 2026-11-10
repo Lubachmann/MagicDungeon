@@ -65,12 +65,12 @@ func run() -> void:
 	# Daily is identical regardless of investment; full clear unlocks optional modes.
 	g.career.wins=1;g.skills={}
 	for id in g.ember_tree.NODES:g.skills[id]=g.ember_tree.NODES[id].costs.size()
-	g.replay.draft={"mode":"daily","vows":{"iron":3}};g.new_run(3);preload("res://tools/test_equipment.gd").arm(g)
+	g.replay.draft={"mode":"daily","vows":{"iron":3}};preload("res://tools/historical_run.gd").start_mode(g,3,"daily",6);preload("res://tools/test_equipment.gd").arm(g)
 	check(g.max_hp==48 and g.attack==14 and g.armor==1 and g.iron==0 and g.potions==1 and g.run_skills.is_empty() and g.replay.threat()==0,"Daily strips all permanent advantages and Vows")
-	var daily_rooms=g.rooms.duplicate(true);var daily_seed=g.run_seed;g.skills={};g.new_run(999);preload("res://tools/test_equipment.gd").arm(g)
+	var daily_rooms=g.rooms.duplicate(true);var daily_seed=g.run_seed;g.skills={};preload("res://tools/historical_run.gd").start_mode(g,999,"daily",6);preload("res://tools/test_equipment.gd").arm(g)
 	check(g.run_seed==daily_seed and g.rooms==daily_rooms and g.run_seed==g.replay.daily_seed(),"Daily generation independent of profile, input seed and bank")
 	check(g.replay.daily_seed("2026-11-02")!=g.replay.daily_seed("2026-11-03"),"Daily changes with UTC date")
-	g.replay.draft={"mode":"endless","vows":{}};g.new_run(44);preload("res://tools/test_equipment.gd").arm(g);g.floor_number=5;g.generate_floor();g.mode="floor";g.ascend_floor()
+	g.replay.draft={"mode":"endless","vows":{}};preload("res://tools/historical_run.gd").start_mode(g,44,"endless",6);preload("res://tools/test_equipment.gd").arm(g);g.floor_number=5;g.generate_floor();g.mode="floor";g.ascend_floor()
 	check(g.floor_number==6 and g.floor_limit()==0 and g.session.valid(g.session.snapshot()),"Endless ascends beyond five and saves")
 	for floor_index in [10,15,25]:g.floor_number=floor_index;g.generate_floor();check(g.rooms.size()==8 and g.session.valid(g.session.snapshot()),"Deep floor generates and validates")
 	g.replay.draft={"mode":"standard","vows":{"iron":3,"fury":3,"ambush":1,"hexed":1,"restless":1,"famine":1}};g.new_run(8);preload("res://tools/test_equipment.gd").arm(g)

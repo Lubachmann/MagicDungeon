@@ -1,4 +1,5 @@
 extends SceneTree
+# Saved rules 19 contract; current expeditions are covered by the Hearth suites.
 var checks=0
 var failures=[]
 func check(ok:bool,message:String):
@@ -6,7 +7,7 @@ func check(ok:bool,message:String):
  if not ok:failures.append(message)
 func _initialize():call_deferred("run")
 func run():
- var g=load("res://main.tscn").instantiate();g.save_path="/private/tmp/magic-equipment-curve-update";root.add_child(g);await process_frame;g.session.enabled=false;g.set_process(false);g.new_run(42)
+ var g=load("res://main.tscn").instantiate();g.save_path="/private/tmp/magic-equipment-curve-update";root.add_child(g);await process_frame;g.session.enabled=false;g.set_process(false);preload("res://tools/historical_run.gd").start(g,42,19)
  check(g.run_rules==19,"New run uses updated rules")
  for floor_num in range(1,6):
   g.floor_number=floor_num

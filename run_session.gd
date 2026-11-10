@@ -163,7 +163,9 @@ func continue_run() -> bool:
 	g.motes.clear()
 	g.flashes.clear()
 	g.recalculate_stats()
+	if g.mode=="relic":preload("res://skill_offers.gd").repair_saved_choices(g)
 	if g.mode=="fight":
+		g.battle["playback_rate"]=1
 		var build=g.combat_build();build["toxic_echo"]=g.battle.build.get("toxic_echo",0.0)
 		for rule in ["fair_physical","element_interval_scale"]:
 			if g.battle.build.has(rule):build[rule]=g.battle.build[rule]
@@ -181,6 +183,7 @@ func start_run(demo: bool=false) -> bool:
 	g.replay.demo_next=demo
 	g.new_run()
 	g.demo_run=demo
+	preload("res://early_journey.gd").begin_run(g)
 	g.hp=g.max_hp
 	if int(g.career.get("runs",0))==0 and not g.career.get("guided_done",false):g.guided.start()
 	focused=0

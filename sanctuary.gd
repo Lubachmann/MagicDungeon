@@ -125,7 +125,13 @@ func draw() -> void:
  elif selected.begins_with("fragment:"):
   var floor_number=int(selected.get_slice(":",1));body=FRAGMENT_STORY[floor_number-1] if fragments.has(str(floor_number)) else "Defeat the Warden on floor %d and return to recover this fragment."%floor_number
  if selected=="elder" and p.get("ending","")!="":body="You rekindled the hearth. The village is warm again, but the voices remain." if p.ending=="rekindle" else "You freed the captive flame. The hearth burns differently now: it belongs to no one."
- g.draw_wrapped(body,Vector2(710,220),465,21,g.INK,7)
+ var journey=preload("res://early_journey.gd").info(g)
+ var learning=selected=="elder" and not journey.is_empty()
+ if learning:body=journey.text
+ g.draw_wrapped(body,Vector2(710,220),465,21,g.INK,4 if learning else 7)
+ if learning:
+  g.button(Rect2(710,310,450,42),journey.action,"journey_next")
+  g.button(Rect2(710,360,450,32),"Skip guidance","journey_skip")
  if selected=="smith":g.button(Rect2(710,335,450,48),"Open the Hearth smithy","smithy_open")
  if p.unseen.has(selected):g.text(Vector2(1010,180),"NEW",18,g.GOLD)
  g.text(Vector2(710,400),"MANUSCRIPTS",19,g.GOLD)

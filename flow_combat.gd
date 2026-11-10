@@ -19,7 +19,7 @@ static func prepare(s: Dictionary) -> void:
 	if s.get("flow_ready",false):return
 	s["flow_ready"]=true;s.waiting=false
 	s["combo"]=0;s["successful_hits"]=0;s["life_fraction"]=clampf(float(s.build.get("life_fraction",0.0)),0.0,0.999999) if s.hp<s.max_hp else 0.0;s["heat"]=0;s["seal_phase"]=0;s["seal_broken"]=false;s["tide_followup"]=false
-	s["plates"]=3 if s.enemy.get("family","")=="construct" else 0
+	s["plates"]=(1 if s.enemy.get("floor_prepared","")=="brittle" else 3) if s.enemy.get("family","")=="construct" else 0
 	s["weapon_guard"]=1 if s.enemy.trait=="shield" and s.p_hits==0 else 0
 	if s.build.get("fair_physical",false):s["guard_hp"]=8.0 if s.weapon_guard>0 else 0.0
 	s["evade_roll"]=maxi(1,(int(s.enemy.get("roll_seed",12345)) ^ 1540483477)%2147483647)
@@ -48,7 +48,7 @@ static func player_power(s: Dictionary,power: float,result: Dictionary) -> float
 	return power
 static func weapon_damage(s: Dictionary,dealt: float,result: Dictionary) -> float:
 	var weapon=s.build.get("weapon","balanced")
-	if s.enemy.get("family","")=="shade" and (s.p_hits+1)%4==0 and not s.iced and not result.get("finisher",false) and not result.get("sunder",false):result["enemy_evade"]=true;result["effect"]="PHASE";return 0
+	if s.enemy.get("family","")=="shade" and (s.p_hits+1)%(6 if s.enemy.get("floor_prepared","")=="eclipse" else 4)==0 and not s.iced and not result.get("finisher",false) and not result.get("sunder",false):result["enemy_evade"]=true;result["effect"]="PHASE";return 0
 	if s.weapon_guard>0:
 		if s.build.get("fair_physical",false):
 			if weapon=="greatblade":
@@ -66,10 +66,32 @@ static func weapon_damage(s: Dictionary,dealt: float,result: Dictionary) -> floa
 		else:dealt=dealt*0.65 if s.build.get("fair_physical",false) else maxi(1,ceili(dealt*0.65));s.plates-=1;s.enemy.armor=maxf(0,float(s.enemy.armor)-1)
 	if s.enemy.get("signature","")=="eclipse" and not s.seal_broken and s.seal_phase==0:
 		if result.crit:s.seal_broken=true;result["effect"]="SEAL BREAK"
-		else:dealt=dealt*0.75 if s.build.get("fair_physical",false) else maxi(1,ceili(dealt*0.75))
+		else:
+			var resistance=0.90 if s.enemy.get("floor_prepared","")=="eclipse" else 0.75
+			dealt=dealt*resistance if s.build.get("fair_physical",false) else maxi(1,ceili(dealt*resistance))
 	return dealt
+static func add_shield(s: Dictionary,amount: int,cap: int,source: String) -> void:
+	var gained=maxi(0,mini(cap,int(s.shield)+amount)-int(s.shield))
+	if not s.has("shield_sources"):s["shield_sources"]=[]
+	if gained>0:s.shield+=gained;s.shield_sources.append({"source":source,"amount":gained})
+static func absorb_shield(s: Dictionary,damage: int,result: Dictionary) -> int:
+	var absorbed=mini(damage,int(s.shield));var remaining=absorbed;var sources=s.get("shield_sources",[])
+	var tracked=0
+	for entry in sources:tracked+=int(entry.amount)
+	# Shields in older checkpoints have no attribution; preserve them as other shields.
+	if tracked<int(s.shield):sources.push_front({"source":"other","amount":int(s.shield)-tracked})
+	var blocked={}
+	while remaining>0 and not sources.is_empty():
+		var entry=sources[0];var used=mini(remaining,int(entry.amount))
+		blocked[entry.source]=int(blocked.get(entry.source,0))+used;entry.amount-=used;remaining-=used
+		if entry.amount<=0:sources.pop_front()
+	s["shield_sources"]=sources;s.shield-=absorbed
+	result["shield_absorbed"]=absorbed;result["shield_sources"]=blocked
+	return damage-absorbed
 static func after_player(s: Dictionary,result: Dictionary,physical: float) -> void:
-	if physical<=0:s.combo=0;return
+	if physical<=0:
+		if int(s.combo)>0:result["combo_lost"]=true
+		s.combo=0;return
 	s.successful_hits+=1;s.combo=(s.combo+1)%3
 	var missing=int(s.max_hp)-int(s.hp)
 	if missing>0:
@@ -80,7 +102,7 @@ static func after_player(s: Dictionary,result: Dictionary,physical: float) -> vo
 	else:s.life_fraction=0.0
 	var weapon=s.build.get("weapon","balanced")
 	if weapon=="balanced" and s.successful_hits%4==0:
-		if s.shield<8:s.shield=mini(8,s.shield+3)
+		add_shield(s,3,8,"sword")
 		result["effect"]="SWORD WARD";result["shielded"]=true
 	if weapon=="ember" and s.successful_hits%3==0 and s.enemy.hp>0:
 		var fire=(float(s.build.get("fire_stack_damage",4.0))*mini(3,int(s.build.get("fire",0)))+float(s.build.get("fire_dps",0.0)))*(1.0+float(s.build.get("fire_mastery",0.0)))
@@ -90,15 +112,15 @@ static func after_player(s: Dictionary,result: Dictionary,physical: float) -> vo
 		s["bastion_used"]=true;s.weapon_guard=1
 		if s.build.get("fair_physical",false):s["guard_hp"]=8.0
 		result["effect"]="BASTION"
-	if s.enemy.get("signature","")=="furnace":s.heat=clampi(s.heat+1-(2 if s.iced else 0),0,4)
+	if s.enemy.get("signature","")=="furnace":s.heat=clampi(s.heat+1-(2 if s.iced else 0)-(1 if s.enemy.get("floor_prepared","")=="brittle" and s.successful_hits%2==0 else 0),0,4)
 	if s.enemy.get("signature","")=="eclipse" and not s.seal_broken and (result.crit or (result.get("sunder",false) and float(s.enemy.armor)<=0) or (float(s.enemy.armor)>0 and s.acid_stacks>=float(s.enemy.armor))):s.seal_broken=true;result["effect"]="SEAL BREAK"
 static func burn_multiplier(s: Dictionary) -> float:
 	if s.enemy.get("family","")=="wisp" and not s.iced and s.acid_stacks<=0:return 0.5
-	if s.enemy.get("signature","")=="eclipse" and not s.seal_broken and s.seal_phase==1:return 0.5
+	if s.enemy.get("signature","")=="eclipse" and not s.seal_broken and s.seal_phase==1:return 0.75 if s.enemy.get("floor_prepared","")=="eclipse" else 0.5
 	return 1.0
 static func special(s: Dictionary,power: float,result: Dictionary,is_special: bool) -> float:
 	var family=s.enemy.get("family","");var sig=s.enemy.get("signature","")
-	if s.get("current_followup",false):return power*0.6
+	if s.get("current_followup",false):return power*(0.4 if s.enemy.get("floor_prepared","")=="water" else 0.6)
 	if not is_special or s.disrupted:return power
 	if family!="":
 		if family=="pikeman":result["pierce"]=0.25;result["effect"]="REACH THRUST";return power*1.3
@@ -117,19 +139,31 @@ static func special(s: Dictionary,power: float,result: Dictionary,is_special: bo
 	return power*(1.8 if int(s.enemy.type) in [1,3] else 1.3)
 static func enemy_hit(s: Dictionary,result: Dictionary,dealt: int,interrupted: bool) -> void:
 	if s.enemy.get("family","")=="leech" and dealt>0:
-		var amount=minf(float(s.enemy.max)-float(s.enemy.hp),minf(float(s.hp),dealt)*0.25);s.enemy.hp+=amount;result["enemy_heal"]=float(result.get("enemy_heal",0))+amount;result["effect"]="LEECH +%.1f"%amount
-	if dealt>0:s.combo=0
+		var amount=minf(float(s.enemy.max)-float(s.enemy.hp),minf(float(s.hp),dealt)*(0.125 if s.enemy.get("floor_prepared","")=="water" else 0.25));s.enemy.hp+=amount;result["enemy_heal"]=float(result.get("enemy_heal",0))+amount;result["effect"]="LEECH +%.1f"%amount
+	if dealt>0:
+		if int(s.combo)>0:result["combo_lost"]=true
+		s.combo=0
 	if s.enemy.get("signature","")=="furnace" and s.heat>=4 and not interrupted:s.heat=0;result["effect"]="FURNACE VENT"
 static func after_enemy(s: Dictionary,result: Dictionary) -> void:
 	if result.get("queue_wave",false):s.tide_followup=true;s.e_time=s.time+0.25
 	elif s.get("current_followup",false):s.tide_followup=false
 	if s.enemy.get("signature","")=="eclipse" and s.e_hits%2==0:s.seal_phase=1-int(s.seal_phase);s.seal_broken=false;result["effect"]="LUNAR SEAL" if s.seal_phase==1 else "SOLAR SEAL"
 static func regenerate(s: Dictionary) -> float:
-	var amount=float(s.regen_amount)
+	var amount=float(s.regen_amount)*(0.5 if s.enemy.get("floor_prepared","")=="embers" else 1.0)
 	if s.enemy.get("signature","")=="abbot" and s.fire_until>=s.time and s.fire_time!=INF:amount*=0.5
 	var heal=minf(float(s.enemy.max)-float(s.enemy.hp),amount);s.enemy.hp+=heal;s.regens+=1
 	s.regen_time=s.regen_time+s.regen_interval if s.regens<s.regen_limit else INF
 	return heal
+static func prepared_description(e: Dictionary) -> String:
+	var rule=str(e.get("floor_prepared",""));var family=str(e.get("family",""));var sig=str(e.get("signature",""))
+	if rule=="water" and family=="leech":return "Cisterns drained: hits heal it for 12.5% of damage dealt to your HP. Shields and evasion deny healing."
+	if rule=="water" and sig=="tide":return "Cisterns drained: follow-ups deal 40% hit power after 0.25s. Each hit can be dodged."
+	if rule=="embers" and (sig=="abbot" or e.get("mending",false)):return "Braziers doused: regeneration halved. Burning the Necromancer halves its healing again. Interrupts delay healing."
+	if rule=="brittle" and family=="construct":return "Forge sabotaged: 1 plate blocks 35% of physical damage until hit. Greatblades shatter it; Fire bypasses it."
+	if rule=="brittle" and sig=="furnace":return "Forge sabotaged: Heat builds every two successful hits. At 4 Heat: +6 attack and armor piercing. Frost cools Heat."
+	if rule=="eclipse" and family=="shade":return "Beacons lit: dodges every 6th swing. Frost stops dodges; dagger finishers and Sunder still hit."
+	if rule=="eclipse" and sig=="eclipse":return "Beacons lit: resistance reduced to 10% physical or 25% burn. Critical hits or breaking armor cancel it."
+	return ""
 static func assign_family(e: Dictionary,index: int) -> void:
 	var id=FAMILY_ORDER[index];e["family"]=id;e.name=FAMILIES[id].name;e.trait="pierce" if id=="pikeman" else "none"
 static func decorate_floor(g) -> void:
@@ -145,4 +179,17 @@ static func decorate_floor(g) -> void:
 				var tile=Vector2i(x,y)
 				if not data.walls.has(tile) and not data.entities.has(tile) and (x*17+y*23+g.run_seed+coord.x*7+coord.y*11)%29==0:data.atmosphere.append(tile)
 	var count=mini(2+(mini(2,g.floor_number-1) if g.run_rules>=18 else 0),candidates.size())
-	for i in range(count):assign_family(candidates[(i+index)%candidates.size()],(index+i)%FAMILY_ORDER.size() if g.run_rules>=18 else index)
+	if g.run_rules>=20:
+		# Put themed pressure in reward rooms; keep entrance, boss and gatekeepers intact.
+		var themed=[];var spare=[]
+		for coord in g.rooms:
+			if coord in [Vector2i.ZERO,g.boss_room]:continue
+			var first=true
+			for enemy in g.rooms[coord].entities.values():
+				if enemy.get("kind","")!="enemy" or int(enemy.get("type",3))==3 or enemy.get("gatekeeper",false):continue
+				if first:themed.append(enemy);first=false
+				else:spare.append(enemy)
+		candidates=themed+spare;count=mini(count,candidates.size())
+		for i in range(count):assign_family(candidates[i],index if i<count-1 or index==0 else posmod(index-1,FAMILY_ORDER.size()))
+	else:
+		for i in range(count):assign_family(candidates[(i+index)%candidates.size()],(index+i)%FAMILY_ORDER.size() if g.run_rules>=18 else index)

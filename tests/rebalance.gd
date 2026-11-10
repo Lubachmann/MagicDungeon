@@ -66,7 +66,7 @@ func run() -> void:
 				check(not blocked.has(far_exit),"Cannot walk around passage guard")
 				check(reachable.has(far_exit),"Defeating guard opens passage")
 		check(blockers>=1,"At least one guarded connected exit per dungeon")
-		check(blessings==0 and gear_rewards==8 and iron_rewards==2,"Ground upgrades replaced with eight chests and two iron")
+		check(blessings==0 and gear_rewards==8 and iron_rewards==3,"Eight chests and three iron including the forge deposit")
 		check(relic_rewards==0,"Relics removed from rooms")
 		# Travel through every open graph edge in both directions with real bounds.
 		for coord in game.links:

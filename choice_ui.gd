@@ -6,7 +6,7 @@ var preview_index=-1
 var preview_stamp=0
 const SHORT={"critical_horizon":"+15% Crit limit","unbound_aim":"+15% Crit limit","precision":"+20% Crit chance","needle":"Ignore 60% armor","bloom":"+4 HP / victory","spark":"+75% opening damage","leech":"+2 HP / 3 hits","ward":"−50% opening damage","cinder":"+1 Fire stack","frost":"+1 Ice stack","solvent":"+1 Acid stack","venom":"+1 Poison stack","shatter":"+1 Ice stack","bulwark":"+1 Acid stack","contagion":"+1 Poison stack","steamglass":"+1 Fire · +1 Ice","corrosive_flame":"+1 Fire · +1 Acid","black_ice":"+1 Ice · +1 Poison","toxic_spark":"+1 Poison · +1 Fire"}
 const NEW_HEADLINES={"quickdraw":"Attack instantly at fight start","heavy_momentum":"+45% heavy hit / −20% speed","combustion":"4 Heat: Fire burst","toxic_harvest":"Poison bursts ×2","exposed_core":"+25% after armor break","glacial_crusher":"+30% vs slowed","venom_edge":"+25% vs poisoned","caustic_burn":"Burns: +25% damage","frozen_precision":"Crits: +20% damage","blood_harvest":"+50% vampirism healing","shieldbreaker":"+25% vs armor","warded_blade":"+25% while shielded","ashen_charge":"+20% vs burning","toxic_glacier":"Poison adds Frost","breakthrough":"+75% after a break","frost_shatter":"+50% for 3 Frost"}
-const NEW_NOTES={"quickdraw":"Then use normal interval","heavy_momentum":"Axe / greatblade","combustion":"Heavy weapon + 4 Fire","toxic_harvest":"4 Poison power","exposed_core":"4 Acid power","glacial_crusher":"Axe / greatblade + Frost","venom_edge":"Dagger + Poison","caustic_burn":"Fire + Acid","frozen_precision":"Critical hits + Frost","blood_harvest":"Vampirism + Poison","shieldbreaker":"Axe / greatblade","warded_blade":"Sword + shield","ashen_charge":"Fire + weapon hits","toxic_glacier":"Poison triggers Frost","breakthrough":"Axe / greatblade + defense break","frost_shatter":"Axe / greatblade + Frost"}
+const NEW_NOTES={"quickdraw":"Then use normal interval"}
 const STACKS={"wildfire":["fire"],"cinder":["fire"],"frost":["ice"],"shatter":["ice"],"solvent":["acid"],"bulwark":["acid"],"venom":["poison"],"contagion":["poison"],"steamglass":["fire","ice"],"corrosive_flame":["fire","acid"],"black_ice":["ice","poison"],"toxic_spark":["poison","fire"]}
 const BONUS={"wildfire":"Burning kills explode","precision":"Max 60% Crit chance","ruin":"Max 300% of normal damage","cinder":"Every 3rd burn: +50% damage","frost":"+20% vs chilled foes","solvent":"3 armor stripped / hit","venom":"Poison before combat","shatter":"3rd ice hit delays the enemy","bulwark":"Shield when armor breaks","contagion":"Next enemy: 10% less damage","steamglass":"Stronger critical hits","corrosive_flame":"Burns strip armor","black_ice":"Ice + poison: +2 shield / 3 hits","toxic_spark":"Poison + fire restore HP"}
 func _init(game):g=game;comparison=preload("res://upgrade_compare.gd").new(game)
@@ -18,6 +18,10 @@ func element_gain(element: String) -> String:
 	var gain=float(future.element_totals[element])-float(current.element_totals[element])
 	return "+%d"%roundi(gain) if is_equal_approx(gain,roundf(gain)) else "+%.1f"%gain
 func summary(id: String) -> String:
+	if id in preload("res://skill_offers.gd").TRAINING:
+		if id=="attack":return "+3 character attack"
+		if id=="guard":return "+2 armor / +6% attack speed"
+		return element_gain(id)+" "+{"fire":"Fire potency","ice":"Frost power","acid":"Acid power","poison":"Poison power"}[id]
 	if g.run_rules>=17 and id=="frost_shatter":return "After freeze: +100% hit"
 	if NEW_HEADLINES.has(id):return NEW_HEADLINES[id]
 	if g.run_rules>=9 and STACKS.has(id):
@@ -75,9 +79,11 @@ func level_cards() -> void:
 			g.draw_rect(rect.grow(-5),Color(accent,0.12));g.draw_rect(rect.grow(-5),accent,false,2)
 		if not g.menu_keyboard and rect.has_point(mouse):hovered=i
 		g.ui_icon(g.replay.relic_icon(id),at+Vector2(15,20),48,g.GOLD)
-		g.text(at+Vector2(78,33),g.RELICS[id][0],23,g.GOLD)
+		g.text(at+Vector2(78,33),g.relic_name(id),23,g.GOLD)
 		g.draw_wrapped(summary(id),at+Vector2(78,59),300,18,g.TEAL,1)
-		if NEW_NOTES.has(id):g.draw_wrapped(NEW_NOTES[id],at+Vector2(78,80),300,15,g.INK,1)
+		if preload("res://skill_offers.gd").has_build_requirement(id):g.draw_wrapped(preload("res://skill_offers.gd").requirement_note(id),at+Vector2(78,80),300,15,g.INK,1)
+		elif NEW_NOTES.has(id):g.draw_wrapped(NEW_NOTES[id],at+Vector2(78,80),300,15,g.INK,1)
+		elif id in preload("res://skill_offers.gd").TRAINING:g.text(at+Vector2(78,80),"Repeatable / this expedition",15,g.INK)
 		if rank!="Common":g.text(at+Vector2(375,30),rank.to_upper(),16,Color("85bcf2") if rank=="Rare" else Color("d7a4ff"))
 	g.front_end.icon_button(Rect2(245,625,465,50),"relic","Reroll / %d"%g.rerolls_left,"relic_reroll",false,g.rerolls_left>0 and can_reroll())
 	g.button(Rect2(710,625,400,50),"Your full build","build_open")
@@ -115,7 +121,7 @@ func legacy_cards(blessing: bool=false) -> void:
 		if not g.menu_keyboard and rect.has_point(pointer if pointer.x>-9999 else g.design_mouse()):selected=i
 		var icon=g.UPGRADE_INFO[id][2] if blessing else g.replay.relic_icon(id)
 		g.ui_icon(icon,at+Vector2(20,20),44,g.ELEMENT_COLORS.get(id,g.GOLD))
-		g.text(at+Vector2(80,48),("Frost infusion" if id=="ice" and g.run_rules>=9 else g.UPGRADE_INFO[id][0]) if blessing else g.RELICS[id][0],22,g.GOLD)
+		g.text(at+Vector2(80,48),("Frost infusion" if id=="ice" and g.run_rules>=9 else g.UPGRADE_INFO[id][0]) if blessing else g.relic_name(id),22,g.GOLD)
 		if not blessing and g.run_rules>=11:
 			g.text(at+Vector2(230,72),rank.to_upper(),16,Color("cb90e8") if rank=="Epic" else Color("80bce2") if rank=="Rare" else g.INK)
 		var headline=summary(id)
@@ -132,6 +138,7 @@ func legacy_cards(blessing: bool=false) -> void:
 				g.text(p+Vector2(32,21),element_gain(element)+" "+{"fire":"Fire","ice":"Frost/hit","acid":"Acid/hit","poison":"Poison/hit"}[element],18 if element_types.size()>1 else 21,g.TEAL)
 		var footer=("%.2fs → %.2fs"%[interval(g.speed),preload("res://build_stats.gd").upgrade_preview(g,id,true).interval] if id=="guard" else "Hover to preview") if blessing else BONUS.get(id,"Faster attacks" if id=="haste" else "Hover for details")
 		if not blessing and NEW_NOTES.has(id):footer=NEW_NOTES[id]
+		if not blessing and preload("res://skill_offers.gd").has_build_requirement(id):footer=preload("res://skill_offers.gd").requirement_note(id)
 		if g.run_rules>=17 and id=="frost_shatter":footer="Next heavy hit after freeze"
 		if g.run_rules>=9:footer={"solvent":"Corrode armor, then expose","venom":"Poison before your first hit","shatter":"Freeze cooldown: 4s","contagion":"Next fight: +1 Poison power"}.get(id,footer)
 		if g.run_rules>=7 and id=="precision":footer="Limit: %.0f%%"%(float(preload("res://build_stats.gd").calculate(g).crit_cap)*100)
@@ -235,4 +242,5 @@ func can_reroll() -> bool:
 	if g.run_rules<11:return g.relic_pool().size()-g.relics.size()>g.choices.size()
 	for id in g.relic_pool():
 		if id not in g.choices:return true
+	if g.run_rules>=20 and g.choices.any(func(id):return id in preload("res://skill_offers.gd").TRAINING):return true
 	return false

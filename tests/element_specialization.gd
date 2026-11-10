@@ -1,4 +1,5 @@
 extends SceneTree
+# Saved rules 18 contract; current expeditions are covered by the Hearth suites.
 const Combat=preload("res://combat.gd")
 const Elements=preload("res://element_rules.gd")
 const Offers=preload("res://skill_offers.gd")
@@ -75,7 +76,7 @@ func run():
   check(ice_build.loss<mixed.loss,"Focused Frost offers more protection: "+weapon)
   check(acid_build.time<mixed.time,"Focused Acid breaks armored enemies faster: "+weapon)
   check(poison_build.time<mixed.time,"Focused Poison has a faster-kill payoff: "+weapon)
- var g=load("res://main.tscn").instantiate();g.save_path="/private/tmp/magic-element-special";root.add_child(g);await process_frame;g.session.enabled=false;g.set_process(false);g.skills={};g.new_run(42)
+ var g=load("res://main.tscn").instantiate();g.save_path="/private/tmp/magic-element-special";root.add_child(g);await process_frame;g.session.enabled=false;g.set_process(false);g.skills={};preload("res://tools/historical_run.gd").start(g,42,18)
  var item=g.make_gear("weapon",1,0,[],"axe");item.plain=true;g.inventory=[item];g.equipped={"weapon":0};g.base_elements={"fire":4,"ice":0,"acid":4,"poison":4};g.reward_level=7;g.recalculate_stats()
  var pool=Offers.pool(g)
  check("combustion" in pool and "toxic_harvest" in pool and "exposed_core" in pool,"Specialization skills enter the eligible random pool")

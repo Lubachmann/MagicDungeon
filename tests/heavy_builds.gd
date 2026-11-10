@@ -1,4 +1,5 @@
 extends SceneTree
+# Saved rules 18 contract; current expeditions are covered by the Hearth suites.
 const Combat=preload("res://combat.gd")
 const Presenter=preload("res://equipment_presenter.gd")
 const Offers=preload("res://skill_offers.gd")
@@ -11,7 +12,7 @@ func battle(relics:Array,build:Dictionary={},power:float=20)->Dictionary:
  var b={"auto_flow":true,"elemental_v2":true,"fair_physical":true,"weapon":"plain","weapon_archetype":"axe","ice":0,"fire":0,"acid":0,"poison":0,"crit_chance":0.0,"vampirism":0.0,"element_interval_scale":1.0}
  b.merge(build,true);var s=Combat.begin(enemy(),40,100,power,0,0.5,relics,b);s.e_time=100;return s
 func run():
- var g=load("res://main.tscn").instantiate();g.save_path="/private/tmp/magic-heavy-builds";root.add_child(g);await process_frame;g.session.enabled=false;g.set_process(false);g.muted=true;g.skills={};g.new_run(42)
+ var g=load("res://main.tscn").instantiate();g.save_path="/private/tmp/magic-heavy-builds";root.add_child(g);await process_frame;g.session.enabled=false;g.set_process(false);g.muted=true;g.skills={};preload("res://tools/historical_run.gd").start(g,42,18)
  check(g.run_rules==18,"New runs have the new heavy-weapon loot")
  var normal=g.make_gear("weapon",5,1,[],"axe");normal.infusion="fire"
  var heavy=normal.duplicate(true);heavy.heavy_form="colossus";heavy.name="Colossus axe"

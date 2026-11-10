@@ -80,7 +80,7 @@ func run() -> void:
 					if entity.kind=="iron":iron_count+=1
 			check(slots.size()==5,"All five equipment slots represented per floor")
 			check(gear_count==8,"Eight gear chests per floor")
-			check(iron_count==2,"Two iron pickups per floor")
+			check(iron_count==3,"Three iron pickups including the forge deposit")
 			if floor_index<5:
 				game.mode="floor"
 				game.ascend_floor()
@@ -133,8 +133,9 @@ func run() -> void:
 	game.rooms[game.room].cleared=true
 	game.move_player(Vector2i.UP)
 	check(game.mode=="floor","Floor clear opens ascent prompt")
+	var expected_ascent_hp=mini(game.max_hp,game.hp+ceili(game.max_hp*0.6))
 	game.action("ascend")
-	check(game.floor_number==2 and game.hp==game.max_hp and game.inventory==held and game.equipped==equipped_before,"Ascent fully heals and preserves equipment")
+	check(game.floor_number==2 and game.hp==expected_ascent_hp and game.inventory==held and game.equipped==equipped_before,"Ascent restores 60% max HP and preserves equipment")
 	check(game.experience==xp_before and game.character_level==level_before and game.breaker and game.boots,"Ascent preserves character progression")
 	var stronger=game.make_enemy(0,0)
 	game.floor_number=1
@@ -154,7 +155,7 @@ func run() -> void:
 	game.finish_run(false)
 	game.action("restart")
 	check(game.floor_number==1 and game.character_level==1 and game.experience==0 and game.pending_levels==0,"Death resets floor and levels")
-	check(game.inventory.is_empty() and game.equipped.is_empty() and game.iron==0 and game.relics.is_empty(),"Death loses found gear, iron and relics")
+	check(game.inventory.size()==1 and game.inventory[0].name=="Sword" and game.equipped.weapon==0 and game.iron==0 and game.relics.is_empty(),"Restart uses the crafted starter and discards expedition gear and relics")
 	# Combat forecast integration: all gear affix types, floor scaling and on-kill XP.
 	for seed_value in range(100):
 		game.new_run(seed_value);preload("res://tools/test_equipment.gd").arm(game)

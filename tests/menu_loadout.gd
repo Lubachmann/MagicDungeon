@@ -16,9 +16,9 @@ func run():
  var p=g.smithy.data();p.blueprints.axe=true;p.items.axe=1
  g.action("loadout_select:axe");g.action("loadout_equip");check(p.loadout.weapon=="axe","Crafted weapon can be selected for the run")
  g.action("loadout_slot:shield");g.action("loadout_select:axe");g.action("loadout_equip");check(not p.loadout.has("shield"),"Items cannot be equipped in the wrong slot")
- g.action("loadout_back");g.replay.draft.mode="daily";g.action("expedition_start");check(g.mode=="loadout" and g.loadout_menu.is_daily(),"Daily runs show the fixed loadout screen")
- g.action("loadout_select:axe");g.action("loadout_equip");check(p.loadout.weapon=="axe","Daily equipment does not alter saved loadout")
- g.action("loadout_start");check(g.mode=="play" and g.inventory[g.equipped.weapon].archetype=="balanced","Daily expedition starts with fixed sword")
+ g.action("loadout_back");g.replay.draft.mode="daily";g.action("expedition_start");check(g.mode=="loadout" and not g.loadout_menu.is_daily(),"Stale Daily selection opens Standard preparation")
+ g.action("loadout_select:axe");g.action("loadout_equip");check(p.loadout.weapon=="axe","Standard keeps the saved weapon")
+ g.action("loadout_start");check(g.mode=="play" and g.inventory[g.equipped.weapon].archetype=="axe","Standard expedition starts with chosen axe")
  g.mode="dead";g.session.enabled=true;g.session.active=false;g.action("restart");check(g.mode=="loadout","Again also requires equipment preparation")
  g.session.enabled=false
  for suffix in ["", ".tmp", ".run", ".run.bak", ".run.tmp"]:DirAccess.remove_absolute(g.save_path+suffix)
